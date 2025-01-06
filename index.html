@@ -5,10 +5,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=yes">
     <title>Log Grep</title>
-    <link rel="stylesheet" href="../lib/pico.min.css"/>
-    <script defer src="../lib/alpinejs.cdn.min.js"></script>
-    <script src="../lib/pako.min.js"></script><!-- 2.0.4 for gz file -->
-    <script src="../lib/jszip.min.js"></script><!--3.7.1 for zip file -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2.0.6/css/pico.min.css"/>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.5/dist/cdn.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/pako@2.0.4/dist/pako.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jszip@3.7.1/dist/jszip.min.js"></script>
     <script src="main.js"></script>
 </head>
 
@@ -41,7 +41,7 @@
             <label for="excludeInput">Exclude Keywords <label style="display: inline;color:#999">case-insensitive <input type="checkbox" x-model="excludeInputCase" /></label></label>
             <input id="excludeInput" placeholder="keywords to be excluded, separated by space" x-model="excludeInput"/>
         </div>
-        <div></div>
+        <div>
             <label for="hideInput">Hide text <label style="display: inline;color:#999">case-insensitive <input type="checkbox" x-model="hideInputCase" /></label></label>
             <input id="hideInput" placeholder="texts to be hidden, separated by space" x-model="hideInput"/>
         </div>
