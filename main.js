@@ -3,6 +3,7 @@ document.addEventListener('alpine:init', () => {
         // State
         inputMethod: 'file',
         fileInput: null,
+        files: [],
         textInput: '',
         includeInput: '',
         includeInputCase: false,
@@ -17,7 +18,7 @@ document.addEventListener('alpine:init', () => {
 
         // Methods
         reset() {
-            this.inputMethod = 'text';
+            this.inputMethod = 'file';
             this.textInput = '';
             this.fileInput = null;
             this.clearResult();
@@ -75,27 +76,43 @@ document.addEventListener('alpine:init', () => {
         },
 
         onFileChanged(event) {
-            const file = event.target.files[0];
-            if (file) {
-                this.fileInput = file;
+            const files = Array.from(event.target.files);
+            if (files.length > 0) {
+                this.files = files.sort((a, b) => a.name.localeCompare(b.name));
+                this.fileInput = event.target;
                 this.inputMethod = 'file';
             }
         },
 
         renderFromFileInput() {
-            const file = this.fileInput;
-            const fileName = file.name.toLowerCase();
+            if (!this.files.length) return;
+            
+            const processNextFile = (index) => {
+                if (index >= this.files.length || this.resultLineCount >= this.outputLimit) {
+                    this.isProcessing = false;
+                    return;
+                }
 
-            if (fileName.endsWith('.gz')) {
-                this.processGzFile(file);
-            } else if (fileName.endsWith('.zip')) {
-                this.processZipFile(file);
-            } else {
-                this.processTextFile(file);
-            }
+                const file = this.files[index];
+                const fileName = file.name.toLowerCase();
+                
+                const onComplete = () => {
+                    processNextFile(index + 1);
+                };
+
+                if (fileName.endsWith('.gz')) {
+                    this.processGzFile(file, onComplete);
+                } else if (fileName.endsWith('.zip')) {
+                    this.processZipFile(file, onComplete);
+                } else {
+                    this.processTextFile(file, onComplete);
+                }
+            };
+
+            processNextFile(0);
         },
 
-        processGzFile(file) {
+        processGzFile(file, onComplete) {
             const chunkSize = 1024 * 1024;
             let offset = 0;
             const reader = new FileReader();
@@ -106,6 +123,7 @@ document.addEventListener('alpine:init', () => {
                 if (this.resultLineCount >= this.outputLimit) {
                     reader.abort();
                     this.isProcessing = false;
+                    onComplete();
                 }
             };
 
@@ -116,7 +134,7 @@ document.addEventListener('alpine:init', () => {
                     readNextChunk();
                 } else {
                     gunzip.push(new Uint8Array(), true);
-                    this.isProcessing = false;
+                    onComplete();
                 }
             };
 
@@ -127,21 +145,36 @@ document.addEventListener('alpine:init', () => {
             readNextChunk();
         },
 
-        processZipFile(file) {
+        processZipFile(file, onComplete) {
             const reader = new FileReader();
             reader.onload = async e => {
                 const zip = await JSZip.loadAsync(e.target.result);
-                zip.forEach(async (path, entry) => {
-                    if (!entry.dir) {
-                        const file = new File([await entry.async('blob')], entry.name);
-                        this.processTextFile(file);
+                const entries = Object.values(zip.files).filter(entry => !entry.dir);
+                
+                // Sort zip entries by name
+                entries.sort((a, b) => a.name.localeCompare(b.name));
+
+                const processZipEntry = async (index) => {
+                    if (index >= entries.length || this.resultLineCount >= this.outputLimit) {
+                        onComplete();
+                        return;
                     }
-                });
+
+                    const entry = entries[index];
+                    const content = await entry.async('blob');
+                    const zipFile = new File([content], entry.name);
+                    
+                    await this.processTextFile(zipFile, () => {
+                        processZipEntry(index + 1);
+                    });
+                };
+
+                processZipEntry(0);
             };
             reader.readAsArrayBuffer(file);
         },
 
-        processTextFile(file) {
+        processTextFile(file, onComplete) {
             const chunkSize = 1024 * 1024;
             let offset = 0;
             const reader = new FileReader();
@@ -149,6 +182,7 @@ document.addEventListener('alpine:init', () => {
             reader.onload = e => {
                 if (this.resultLineCount >= this.outputLimit) {
                     this.isProcessing = false;
+                    onComplete();
                     return;
                 }
 
@@ -157,7 +191,7 @@ document.addEventListener('alpine:init', () => {
                 if (offset < file.size) {
                     readNextChunk();
                 } else {
-                    this.isProcessing = false;
+                    onComplete();
                 }
             };
 

@@ -30,9 +30,9 @@
                         </label>
                     </header>
                     <div x-show="inputMethod === 'file'" x-transition>
-                        <input type="file" id="fileInput" @change="onFileChanged" 
+                        <input type="file" id="fileInput" @change="onFileChanged" multiple
                                accept=".txt,.log,.gz,.zip"/>
-                        <small>Supports: Plain text, .gz, .zip files</small>
+                        <small>Supports multiple files: Plain text, .gz, .zip files</small>
                     </div>
                 </article>
             </div>
