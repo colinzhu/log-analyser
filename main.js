@@ -19,6 +19,8 @@ document.addEventListener('alpine:init', () => {
             this.textInput = '';
             this.fileInput = null;
             this.clearResult();
+            // Reset file input element
+            document.getElementById('fileInput').value = '';
         },
 
         toggleWrap() {
