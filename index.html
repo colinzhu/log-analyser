@@ -10,6 +10,28 @@
     <script src="https://cdn.jsdelivr.net/npm/pako@2.0.4/dist/pako.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.7.1/dist/jszip.min.js"></script>
     <script src="main.js"></script>
+    <style>
+        .button-group {
+            display: flex;
+            gap: 0.5rem;
+        }
+        .button-group button {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .results {
+            margin-top: 2rem;
+        }
+        .actions-grid {
+            display: grid;
+            grid-template-columns: auto auto;
+            align-items: center;
+        }
+        .actions-right {
+            justify-self: end;
+        }
+    </style>
 </head>
 
 <body x-data="appData">
@@ -18,67 +40,135 @@
     </nav>
 
     <main class="container-fluid">
-        <div>
-            <label for="fileInput">Select a text file (.gz / .zip / plain text):</label>
-            <input type="file" id="fileInput" @change="onFileChanged"/>
-        </div>
-
-        <div x-show="fileInput == null">
-            <label for="textInput">Or input text:</label>
-            <textarea id="textInput" rows="2" autoFocus placeholder="Text / log to be filtered" x-model="textInput"></textarea>
-        </div>
-
+        <!-- Input Method Selection -->
         <div class="grid">
             <div>
-                <label for="includeInput">
-                    Contain Keywords 
-                    <small>case-insensitive <input type="checkbox" x-model="includeInputCase"/></small>
-                </label>
-                <input id="includeInput" placeholder="keywords to be included, separated by space" x-model="includeInput"/>
+                <article>
+                    <header>
+                        <label>
+                            <input type="radio" name="inputMethod" value="file" x-model="inputMethod" checked/>
+                            File Input
+                        </label>
+                    </header>
+                    <div x-show="inputMethod === 'file'" x-transition>
+                        <input type="file" id="fileInput" @change="onFileChanged" 
+                               accept=".txt,.log,.gz,.zip"/>
+                        <small>Supports: Plain text, .gz, .zip files</small>
+                    </div>
+                </article>
             </div>
 
             <div>
-                <label for="excludeInput">
-                    Exclude Keywords 
-                    <small>case-insensitive <input type="checkbox" x-model="excludeInputCase"/></small>
-                </label>
-                <input id="excludeInput" placeholder="keywords to be excluded, separated by space" x-model="excludeInput"/>
+                <article>
+                    <header>
+                        <label>
+                            <input type="radio" name="inputMethod" value="text" x-model="inputMethod"/>
+                            Text Input
+                        </label>
+                    </header>
+                    <div x-show="inputMethod === 'text'" x-transition>
+                        <textarea id="textInput" rows="3" 
+                                 placeholder="Paste your text/log here..." 
+                                 x-model="textInput"></textarea>
+                    </div>
+                </article>
             </div>
+        </div>
 
+        <!-- Filter Options -->
+        <article>
+            <header>
+                <h4>Filter Options</h4>
+            </header>
+            <div class="grid">
+                <div>
+                    <label for="includeInput">
+                        Include Keywords 
+                        <small>case-insensitive <input type="checkbox" x-model="includeInputCase"/></small>
+                    </label>
+                    <input id="includeInput" placeholder="Keywords to include, separated by space" x-model="includeInput"/>
+                </div>
+
+                <div>
+                    <label for="excludeInput">
+                        Exclude Keywords 
+                        <small>case-insensitive <input type="checkbox" x-model="excludeInputCase"/></small>
+                    </label>
+                    <input id="excludeInput" placeholder="Keywords to exclude, separated by space" x-model="excludeInput"/>
+                </div>
+
+                <div>
+                    <label for="hideInput">
+                        Hide Text 
+                        <small>case-insensitive <input type="checkbox" x-model="hideInputCase"/></small>
+                    </label>
+                    <input id="hideInput" placeholder="Text to hide, separated by space" x-model="hideInput"/>
+                </div>
+
+                <div>
+                    <label for="outputLimit">Output Limit</label>
+                    <select id="outputLimit" x-model="outputLimit">
+                        <option value="10000">10,000 lines</option>
+                        <option value="1000">1,000 lines</option>
+                        <option value="100">100 lines</option>
+                        <option value="50">50 lines</option>
+                        <option value="10">10 lines</option>
+                        <option value="999999999">No limit</option>
+                    </select>
+                </div>
+            </div>
+        </article>
+
+        <!-- Actions -->
+        <div class="actions-grid">
             <div>
-                <label for="hideInput">
-                    Hide text 
-                    <small>case-insensitive <input type="checkbox" x-model="hideInputCase"/></small>
-                </label>
-                <input id="hideInput" placeholder="texts to be hidden, separated by space" x-model="hideInput"/>
+                <div class="button-group">
+                    <button class="primary" @click="renderResult" 
+                            x-bind:aria-busy="isProcessing" 
+                            x-bind:disabled="isProcessing || (!fileInput && !textInput)">
+                        Search
+                    </button>
+                    <button class="secondary outline" @click="reset">Reset</button>
+                </div>
             </div>
-
-            <div>
-                <label for="outputLimit">Output limit</label>
-                <select id="outputLimit" x-model="outputLimit">
-                    <option value="10000">10000</option>
-                    <option value="1000">1000</option>
-                    <option value="100">100</option>
-                    <option value="50">50</option>
-                    <option value="10">10</option>
-                    <option value="999999999">no limit</option>
-                </select>
+            <div x-show="resultLineCount > 1" class="actions-right">
+                <div class="button-group">
+                    <button class="secondary outline" @click="sortResult('asc')">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                            <path d="M3.5 3.5a.5.5 0 0 0-1 0v8.793l-1.146-1.147a.5.5 0 0 0-.708.708l2 1.999.007.007a.497.497 0 0 0 .7-.006l2-2a.5.5 0 0 0-.707-.708L3.5 12.293V3.5zm4 .5a.5.5 0 0 1 0-1h1a.5.5 0 0 1 0 1h-1zm0 3a.5.5 0 0 1 0-1h3a.5.5 0 0 1 0 1h-3zm0 3a.5.5 0 0 1 0-1h5a.5.5 0 0 1 0 1h-5zM7 12.5a.5.5 0 0 0 .5.5h7a.5.5 0 0 0 0-1h-7a.5.5 0 0 0-.5.5z"/>
+                        </svg>
+                        Sort A-Z
+                    </button>
+                    <button class="secondary outline" @click="sortResult('desc')">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                            <path d="M3.5 12.5a.5.5 0 0 1-1 0V3.707L1.354 4.854a.5.5 0 1 1-.708-.708l2-1.999.007-.007a.498.498 0 0 1 .7.006l2 2a.5.5 0 1 1-.707.708L3.5 3.707V12.5zm3.5-9a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1h-7a.5.5 0 0 1-.5-.5zM7.5 6a.5.5 0 0 0 0 1h5a.5.5 0 0 0 0-1h-5zm0 3a.5.5 0 0 0 0 1h3a.5.5 0 0 0 0-1h-3zm0 3a.5.5 0 0 0 0 1h1a.5.5 0 0 0 0-1h-1z"/>
+                        </svg>
+                        Sort Z-A
+                    </button>
+                    <button class="secondary outline" @click="toggleWrap">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                            <path d="M2.5 1A1.5 1.5 0 0 0 1 2.5v11A1.5 1.5 0 0 0 2.5 15h6.086a1.5 1.5 0 0 0 1.06-.44l4.915-4.914A1.5 1.5 0 0 0 15 8.586V2.5A1.5 1.5 0 0 0 13.5 1h-11zM2 2.5a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 .5.5V8H9.5A1.5 1.5 0 0 0 8 9.5V14H2.5a.5.5 0 0 1-.5-.5v-11zm7 11.293V9.5a.5.5 0 0 1 .5-.5h4.293L9 13.793z"/>
+                        </svg>
+                        <span x-text="isWrap ? 'Nowrap' : 'Wrap'"></span>
+                    </button>
+                </div>
             </div>
         </div>
 
-        <div>
-            <button @click="renderResult" x-bind:aria-busy="isProcessing" x-bind:disabled="isProcessing">Search</button>
-            <button @click="reset">Reset</button>
-            <button @click="sortResult('asc')" x-show="resultLineCount > 1">Sort asc</button>
-            <button @click="sortResult('desc')" x-show="resultLineCount > 1">Sort desc</button>
-            <button @click="toggleWrap" x-text="isWrap ? 'nowrap' : 'wrap'" x-show="resultLineCount > 1"></button>
-        </div>
-
-        <div style="margin-top:1em">
-            <mark>Total lines: <span x-text="resultLineCount"></span></mark>
-        </div>
-
-        <div id="result" x-bind:style="isWrap ? 'white-space: normal' : 'white-space: nowrap'"></div>
+        <!-- Results -->
+        <article x-show="resultLineCount > 0" class="results">
+            <header>
+                <div class="grid">
+                    <div>
+                        <h4>Results</h4>
+                    </div>
+                    <div style="text-align: right">
+                        <mark>Total lines: <span x-text="resultLineCount"></span></mark>
+                    </div>
+                </div>
+            </header>
+            <div id="result" x-bind:style="isWrap ? 'white-space: normal' : 'white-space: nowrap'"></div>
+        </article>
     </main>
 </body>
 </html>

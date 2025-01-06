@@ -1,6 +1,7 @@
 document.addEventListener('alpine:init', () => {
     Alpine.data('appData', () => ({
         // State
+        inputMethod: 'file',
         fileInput: null,
         textInput: '',
         includeInput: '',
@@ -16,10 +17,10 @@ document.addEventListener('alpine:init', () => {
 
         // Methods
         reset() {
+            this.inputMethod = 'text';
             this.textInput = '';
             this.fileInput = null;
             this.clearResult();
-            // Reset file input element
             document.getElementById('fileInput').value = '';
         },
 
@@ -35,7 +36,7 @@ document.addEventListener('alpine:init', () => {
         renderResult() {
             this.clearResult();
             this.isProcessing = true;
-            this.fileInput ? this.renderFromFileInput() : this.renderFromTextInput();
+            this.inputMethod === 'file' ? this.renderFromFileInput() : this.renderFromTextInput();
         },
 
         renderFromTextInput() {
@@ -77,7 +78,7 @@ document.addEventListener('alpine:init', () => {
             const file = event.target.files[0];
             if (file) {
                 this.fileInput = file;
-                this.textInput = '';
+                this.inputMethod = 'file';
             }
         },
 
