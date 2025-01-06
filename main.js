@@ -1,5 +1,6 @@
 document.addEventListener('alpine:init', () => {
     Alpine.data('appData', () => ({
+        // State
         fileInput: null,
         textInput: '',
         includeInput: '',
@@ -13,6 +14,17 @@ document.addEventListener('alpine:init', () => {
         outputLimit: 1000,
         isProcessing: false,
 
+        // Methods
+        reset() {
+            this.textInput = '';
+            this.fileInput = null;
+            this.clearResult();
+        },
+
+        toggleWrap() {
+            this.isWrap = !this.isWrap;
+        },
+
         clearResult() {
             document.getElementById('result').innerHTML = '';
             this.resultLineCount = 0;
@@ -21,41 +33,42 @@ document.addEventListener('alpine:init', () => {
         renderResult() {
             this.clearResult();
             this.isProcessing = true;
-            if (this.fileInput) {
-                this.renderFromFileInput();
-            } else {
-                this.renderFromTextInput();
-            }
+            this.fileInput ? this.renderFromFileInput() : this.renderFromTextInput();
         },
 
         renderFromTextInput() {
-            const includeKeywords = this.includeInput.trim().split(" ").filter(Boolean);
-            const excludeKeywords = this.excludeInput.trim().split(" ").filter(Boolean);
-            const hideTexts = this.hideInput.trim().split(" ").filter(Boolean);
-
-            const includeRegexFlags = this.includeInputCase ? 'i' : '';
-            const excludeRegexFlags = this.excludeInputCase ? 'i' : '';
-            const hideRegexFlags = this.hideInputCase ? 'i' : '';
-            const includeRegexes = includeKeywords.map(key => new RegExp(key, includeRegexFlags));
-            const excludeRegexes = excludeKeywords.map(key => new RegExp(key, excludeRegexFlags));
-            const hideRegexes = hideTexts.map(key => new RegExp(key, hideRegexFlags));
-
+            const { includeRegexes, excludeRegexes, hideRegexes } = this.buildRegexes();
             const lines = this.textInput.split("\n");
 
             for (let line of lines) {
                 if (this.resultLineCount >= this.outputLimit) break;
-
-                let include = includeRegexes.every(regex => regex.test(line));
-                let exclude = excludeRegexes.every(regex => !regex.test(line));
-
-                if (include && exclude) {
-                    for (let regex of hideRegexes) {
-                        line = line.replace(regex, "");
-                    }
-                    this.writeLine(line);
-                }
+                this.processLine(line, includeRegexes, excludeRegexes, hideRegexes);
             }
             this.isProcessing = false;
+        },
+
+        buildRegexes() {
+            const includeKeywords = this.includeInput.trim().split(" ").filter(Boolean);
+            const excludeKeywords = this.excludeInput.trim().split(" ").filter(Boolean);
+            const hideTexts = this.hideInput.trim().split(" ").filter(Boolean);
+
+            return {
+                includeRegexes: includeKeywords.map(key => new RegExp(key, this.includeInputCase ? 'i' : '')),
+                excludeRegexes: excludeKeywords.map(key => new RegExp(key, this.excludeInputCase ? 'i' : '')),
+                hideRegexes: hideTexts.map(key => new RegExp(key, this.hideInputCase ? 'i' : ''))
+            };
+        },
+
+        processLine(line, includeRegexes, excludeRegexes, hideRegexes) {
+            const include = includeRegexes.every(regex => regex.test(line));
+            const exclude = excludeRegexes.every(regex => !regex.test(line));
+
+            if (include && exclude) {
+                hideRegexes.forEach(regex => {
+                    line = line.replace(regex, "");
+                });
+                this.writeLine(line);
+            }
         },
 
         onFileChanged(event) {
@@ -80,12 +93,12 @@ document.addEventListener('alpine:init', () => {
         },
 
         processGzFile(file) {
-            const chunkSize = 1024 * 1024; // 1MB chunks
+            const chunkSize = 1024 * 1024;
             let offset = 0;
             const reader = new FileReader();
             const gunzip = new pako.Inflate({to: 'string'});
 
-            gunzip.onData = (chunk) => {
+            gunzip.onData = chunk => {
                 this.processChunk(chunk);
                 if (this.resultLineCount >= this.outputLimit) {
                     reader.abort();
@@ -93,24 +106,19 @@ document.addEventListener('alpine:init', () => {
                 }
             };
 
-            reader.onload = (e) => {
+            reader.onload = e => {
                 gunzip.push(new Uint8Array(e.target.result), false);
                 offset += chunkSize;
                 if (offset < file.size && this.resultLineCount < this.outputLimit) {
                     readNextChunk();
                 } else {
-                    gunzip.push(new Uint8Array(), true); // signal the end of the stream
+                    gunzip.push(new Uint8Array(), true);
                     this.isProcessing = false;
                 }
             };
 
-            reader.onerror = (e) => {
-                console.error("Error reading file:", e);
-            };
-
             const readNextChunk = () => {
-                const blob = file.slice(offset, offset + chunkSize);
-                reader.readAsArrayBuffer(blob);
+                reader.readAsArrayBuffer(file.slice(offset, offset + chunkSize));
             };
 
             readNextChunk();
@@ -118,31 +126,30 @@ document.addEventListener('alpine:init', () => {
 
         processZipFile(file) {
             const reader = new FileReader();
-            reader.onload = async (e) => {
+            reader.onload = async e => {
                 const zip = await JSZip.loadAsync(e.target.result);
-
-                zip.forEach(async (relativePath, zipEntry) => {
-                    if (zipEntry.dir) return;
-                    const file = new File([await zipEntry.async('blob')], zipEntry.name, {type: 'file'});
-                    this.processTextFile(file);
+                zip.forEach(async (path, entry) => {
+                    if (!entry.dir) {
+                        const file = new File([await entry.async('blob')], entry.name);
+                        this.processTextFile(file);
+                    }
                 });
             };
             reader.readAsArrayBuffer(file);
         },
 
         processTextFile(file) {
-            const chunkSize = 1024 * 1024; // 1MB chunks
+            const chunkSize = 1024 * 1024;
             let offset = 0;
             const reader = new FileReader();
 
-            reader.onload = (e) => {
+            reader.onload = e => {
                 if (this.resultLineCount >= this.outputLimit) {
                     this.isProcessing = false;
                     return;
                 }
 
-                const chunk = e.target.result;
-                this.processChunk(chunk);
+                this.processChunk(e.target.result);
                 offset += chunkSize;
                 if (offset < file.size) {
                     readNextChunk();
@@ -150,42 +157,22 @@ document.addEventListener('alpine:init', () => {
                     this.isProcessing = false;
                 }
             };
+
             const readNextChunk = () => {
-                const blob = file.slice(offset, offset + chunkSize);
-                reader.readAsText(blob);
+                reader.readAsText(file.slice(offset, offset + chunkSize));
             };
+
             readNextChunk();
         },
 
         processChunk(chunk) {
-            const includeKeywords = this.includeInput.trim().split(" ").filter(Boolean);
-            const excludeKeywords = this.excludeInput.trim().split(" ").filter(Boolean);
-            const hideTexts = this.hideInput.trim().split("~").filter(Boolean);
-
-            const includeRegexFlags = this.includeInputCase ? 'i' : '';
-            const excludeRegexFlags = this.excludeInputCase ? 'i' : '';
-            const hideRegexFlags = this.hideInputCase ? 'i' : '';
-
-            const includeRegexes = includeKeywords.map(key => new RegExp(key, includeRegexFlags));
-            const excludeRegexes = excludeKeywords.map(key => new RegExp(key, excludeRegexFlags));
-            const hideRegexes = hideTexts.map(key => new RegExp(key, hideRegexFlags));
-
+            const { includeRegexes, excludeRegexes, hideRegexes } = this.buildRegexes();
             const lines = chunk.split("\n");
 
             for (let line of lines) {
                 if (this.resultLineCount >= this.outputLimit) break;
-
-                let include = includeRegexes.every(regex => regex.test(line));
-                let exclude = excludeRegexes.every(regex => !regex.test(line));
-
-                if (include && exclude) {
-                    for (let regex of hideRegexes) {
-                        line = line.replace(regex, "");
-                    }
-                    this.writeLine(line);
-                }
+                this.processLine(line, includeRegexes, excludeRegexes, hideRegexes);
             }
-            console.log("this.resultLineCount", this.resultLineCount);
         },
 
         writeLine(line) {
@@ -193,22 +180,15 @@ document.addEventListener('alpine:init', () => {
             const lineDiv = document.createElement('div');
             lineDiv.textContent = line;
             resultDiv.appendChild(lineDiv);
-            this.resultLineCount = this.resultLineCount + 1;
+            this.resultLineCount++;
         },
 
-        sortResult(sorting) {
+        sortResult(direction) {
             const resultDiv = document.getElementById('result');
             const lines = Array.from(resultDiv.children).map(div => div.textContent);
-            lines.sort((a, b) => {
-                if (sorting === 'asc') {
-                    return a.localeCompare(b);
-                } else {
-                    return b.localeCompare(a);
-                }
-            });
+            lines.sort((a, b) => direction === 'asc' ? a.localeCompare(b) : b.localeCompare(a));
             this.clearResult();
             lines.forEach(line => this.writeLine(line));
-        },
-
+        }
     }))
 })

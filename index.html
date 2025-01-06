@@ -13,63 +13,72 @@
 </head>
 
 <body x-data="appData">
-<div class="container-fluid">
-    <nav>
-        <ul>
-            <li>
-                <h1>Log Grep</h1>
-            </li>
-        </ul>
+    <nav class="container-fluid">
+        <h1>Log Grep</h1>
     </nav>
-</div>
 
-<div class="container-fluid">
-    <div>
-        <label for="fileInput">Select a text file (.gz / .zip / plain text):</label>
-        <input type="file" id="fileInput" @change="onFileChanged"/>
-    </div>
-    <div x-show="fileInput == null">
-        <label for="textInput">Or input text: </label>
-        <textarea id="textInput" rows="2" autoFocus placeholder="Text / log to be filtered" x-model="textInput"></textarea>
-    </div>
-    <div class="grid">
+    <main class="container-fluid">
         <div>
-            <label for="includeInput">Contain Keywords <label style="display: inline;color:#999">case-insensitive <input type="checkbox" x-model="includeInputCase" /></label></label>
-            <input id="includeInput" placeholder="keywords to be included, separated by space" x-model="includeInput"/>
+            <label for="fileInput">Select a text file (.gz / .zip / plain text):</label>
+            <input type="file" id="fileInput" @change="onFileChanged"/>
         </div>
+
+        <div x-show="fileInput == null">
+            <label for="textInput">Or input text:</label>
+            <textarea id="textInput" rows="2" autoFocus placeholder="Text / log to be filtered" x-model="textInput"></textarea>
+        </div>
+
+        <div class="grid">
+            <div>
+                <label for="includeInput">
+                    Contain Keywords 
+                    <small>case-insensitive <input type="checkbox" x-model="includeInputCase"/></small>
+                </label>
+                <input id="includeInput" placeholder="keywords to be included, separated by space" x-model="includeInput"/>
+            </div>
+
+            <div>
+                <label for="excludeInput">
+                    Exclude Keywords 
+                    <small>case-insensitive <input type="checkbox" x-model="excludeInputCase"/></small>
+                </label>
+                <input id="excludeInput" placeholder="keywords to be excluded, separated by space" x-model="excludeInput"/>
+            </div>
+
+            <div>
+                <label for="hideInput">
+                    Hide text 
+                    <small>case-insensitive <input type="checkbox" x-model="hideInputCase"/></small>
+                </label>
+                <input id="hideInput" placeholder="texts to be hidden, separated by space" x-model="hideInput"/>
+            </div>
+
+            <div>
+                <label for="outputLimit">Output limit</label>
+                <select id="outputLimit" x-model="outputLimit">
+                    <option value="10000">10000</option>
+                    <option value="1000">1000</option>
+                    <option value="100">100</option>
+                    <option value="50">50</option>
+                    <option value="10">10</option>
+                    <option value="999999999">no limit</option>
+                </select>
+            </div>
+        </div>
+
         <div>
-            <label for="excludeInput">Exclude Keywords <label style="display: inline;color:#999">case-insensitive <input type="checkbox" x-model="excludeInputCase" /></label></label>
-            <input id="excludeInput" placeholder="keywords to be excluded, separated by space" x-model="excludeInput"/>
+            <button @click="renderResult" x-bind:aria-busy="isProcessing" x-bind:disabled="isProcessing">Search</button>
+            <button @click="reset">Reset</button>
+            <button @click="sortResult('asc')" x-show="resultLineCount > 1">Sort asc</button>
+            <button @click="sortResult('desc')" x-show="resultLineCount > 1">Sort desc</button>
+            <button @click="toggleWrap" x-text="isWrap ? 'nowrap' : 'wrap'" x-show="resultLineCount > 1"></button>
         </div>
-        <div>
-            <label for="hideInput">Hide text <label style="display: inline;color:#999">case-insensitive <input type="checkbox" x-model="hideInputCase" /></label></label>
-            <input id="hideInput" placeholder="texts to be hidden, separated by space" x-model="hideInput"/>
+
+        <div style="margin-top:1em">
+            <mark>Total lines: <span x-text="resultLineCount"></span></mark>
         </div>
-        <div>
-            <label for="outputLimit">Output limit</label>
-            <select id="outputLimit"  x-model="outputLimit">
-                <option value="10000">10000</option>
-                <option value="1000">1000</option>
-                <option value="100">100</option>
-                <option value="50">50</option>
-                <option value="10">10</option>
-                <option value="999999999">no limit</option>
-            </select>
-        </div>
-    </div>
-    <div>
-        <button @click.prevent="renderResult" x-bind:aria-busy="isProcessing" x-bind:disabled="isProcessing">Search</button>
-        <button type="reset" @click="textInput = ''; fileInput = null; clearResult()">Reset</button>
-        <button type="button" @click="sortResult('asc')" x-show="resultLineCount > 1">Sort asc</button>
-        <button type="button" @click="sortResult('desc')" x-show="resultLineCount > 1">Sort desc</button>
-        <button type="button" @click="isWrap = !isWrap" x-text="isWrap ? 'nowrap' : 'wrap'" x-show="resultLineCount > 1"></button>
-    </div>
-    <mark><span x-text="'Total lines:' + resultLineCount"></span></mark>
-</div>
-<div class="container-fluid">
-    <div id="result" x-bind:style="isWrap ? 'white-space: normal' : 'white-space: nowrap'">
-        <!-- each line of result will be a separate div -->
-    </div>
-</div>
+
+        <div id="result" x-bind:style="isWrap ? 'white-space: normal' : 'white-space: nowrap'"></div>
+    </main>
 </body>
 </html>
