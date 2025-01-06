@@ -63,7 +63,7 @@ document.addEventListener('alpine:init', () => {
             };
         },
 
-        processLine(line, includeRegexes, excludeRegexes, hideRegexes) {
+        processLine(line, includeRegexes, excludeRegexes, hideRegexes, fileName) {
             const include = includeRegexes.every(regex => regex.test(line));
             const exclude = excludeRegexes.every(regex => !regex.test(line));
 
@@ -71,7 +71,7 @@ document.addEventListener('alpine:init', () => {
                 hideRegexes.forEach(regex => {
                     line = line.replace(regex, "");
                 });
-                this.writeLine(line);
+                this.writeLine(line, fileName);
             }
         },
 
@@ -119,7 +119,7 @@ document.addEventListener('alpine:init', () => {
             const gunzip = new pako.Inflate({to: 'string'});
 
             gunzip.onData = chunk => {
-                this.processChunk(chunk);
+                this.processChunk(chunk, file.name);
                 if (this.resultLineCount >= this.outputLimit) {
                     reader.abort();
                     this.isProcessing = false;
@@ -163,10 +163,14 @@ document.addEventListener('alpine:init', () => {
                     const entry = entries[index];
                     const content = await entry.async('blob');
                     const zipFile = new File([content], entry.name);
+                    const fullName = `${file.name}/${entry.name}`;
                     
-                    await this.processTextFile(zipFile, () => {
+                    const reader = new FileReader();
+                    reader.onload = e => {
+                        this.processChunk(e.target.result, fullName);
                         processZipEntry(index + 1);
-                    });
+                    };
+                    reader.readAsText(zipFile);
                 };
 
                 processZipEntry(0);
@@ -186,7 +190,7 @@ document.addEventListener('alpine:init', () => {
                     return;
                 }
 
-                this.processChunk(e.target.result);
+                this.processChunk(e.target.result, file.name);
                 offset += chunkSize;
                 if (offset < file.size) {
                     readNextChunk();
@@ -202,20 +206,23 @@ document.addEventListener('alpine:init', () => {
             readNextChunk();
         },
 
-        processChunk(chunk) {
+        processChunk(chunk, fileName) {
             const { includeRegexes, excludeRegexes, hideRegexes } = this.buildRegexes();
             const lines = chunk.split("\n");
 
             for (let line of lines) {
                 if (this.resultLineCount >= this.outputLimit) break;
-                this.processLine(line, includeRegexes, excludeRegexes, hideRegexes);
+                this.processLine(line, includeRegexes, excludeRegexes, hideRegexes, fileName);
             }
         },
 
-        writeLine(line) {
+        writeLine(line, fileName) {
             const resultDiv = document.getElementById('result');
             const lineDiv = document.createElement('div');
             lineDiv.textContent = line;
+            if (fileName) {
+                lineDiv.title = `From: ${fileName}`;
+            }
             resultDiv.appendChild(lineDiv);
             this.resultLineCount++;
         },
