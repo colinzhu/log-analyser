@@ -229,10 +229,21 @@ document.addEventListener('alpine:init', () => {
 
         sortResult(direction) {
             const resultDiv = document.getElementById('result');
-            const lines = Array.from(resultDiv.children).map(div => div.textContent);
-            lines.sort((a, b) => direction === 'asc' ? a.localeCompare(b) : b.localeCompare(a));
+            // Save both text content and file name
+            const lines = Array.from(resultDiv.children).map(div => ({
+                text: div.textContent,
+                fileName: div.title.replace('From: ', '')  // Extract original file name
+            }));
+            
+            // Sort by text content
+            lines.sort((a, b) => direction === 'asc' ? 
+                a.text.localeCompare(b.text) : 
+                b.text.localeCompare(a.text)
+            );
+            
             this.clearResult();
-            lines.forEach(line => this.writeLine(line));
+            // Restore both text and file name
+            lines.forEach(line => this.writeLine(line.text, line.fileName));
         }
     }))
 })
