@@ -6,32 +6,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=yes">
     <title>Log Grep</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2.0.6/css/pico.min.css"/>
+    <link rel="stylesheet" href="main.css"/>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.5/dist/cdn.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/pako@2.0.4/dist/pako.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.7.1/dist/jszip.min.js"></script>
     <script src="main.js"></script>
-    <style>
-        .button-group {
-            display: flex;
-            gap: 0.5rem;
-        }
-        .button-group button {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-        .results {
-            margin-top: 2rem;
-        }
-        .actions-grid {
-            display: grid;
-            grid-template-columns: auto auto;
-            align-items: center;
-        }
-        .actions-right {
-            justify-self: end;
-        }
-    </style>
 </head>
 
 <body x-data="appData">
@@ -157,17 +136,15 @@
 
         <!-- Results -->
         <article x-show="resultLineCount > 0" class="results">
-            <header>
-                <div class="grid">
-                    <div>
-                        <h4>Results</h4>
-                    </div>
-                    <div style="text-align: right">
-                        <mark>Total lines: <span x-text="resultLineCount"></span></mark>
+            <div class="results-content">
+                <div class="results-header">
+                    <h4>Results</h4>
+                    <div class="total-lines">
+                        Total lines: <strong x-text="resultLineCount"></strong>
                     </div>
                 </div>
-            </header>
-            <div id="result" x-bind:style="isWrap ? 'white-space: normal' : 'white-space: nowrap'"></div>
+                <div id="result" x-bind:style="isWrap ? 'white-space: normal' : 'white-space: nowrap'"></div>
+            </div>
         </article>
     </main>
 </body>
