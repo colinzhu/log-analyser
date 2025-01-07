@@ -157,6 +157,12 @@ document.addEventListener('alpine:init', () => {
             const reader = new FileReader();
             reader.onload = async (e) => {
                 try {
+                    if (this.shouldStop) {
+                        this.isProcessing = false;
+                        onComplete();
+                        return;
+                    }
+
                     const zip = await JSZip.loadAsync(e.target.result);
                     const entries = Object.values(zip.files).filter(entry => !entry.dir);
                     entries.sort((a, b) => a.name.localeCompare(b.name));
@@ -182,12 +188,13 @@ document.addEventListener('alpine:init', () => {
                         }
                     }));
 
-                    this.isProcessing = false;
                     onComplete();
                 } catch (error) {
                     console.error('Error processing ZIP file:', error);
-                    this.isProcessing = false;
                     onComplete();
+                } finally {
+                    // 在 finally 块中设置 isProcessing，确保总是被执行
+                    this.isProcessing = false;
                 }
             };
 
