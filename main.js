@@ -273,6 +273,27 @@ document.addEventListener('alpine:init', () => {
             this.clearResult();
             // Restore both text and file name
             lines.forEach(line => this.writeLine(line.text, line.fileName));
+        },
+
+        saveResult() {
+            const resultDiv = document.getElementById('result');
+            const lines = Array.from(resultDiv.children).map(div => {
+                const fileName = div.title ? ` [${div.title.replace('From: ', '')}]` : '';
+                return `${div.textContent}${fileName}`;
+            });
+            
+            const content = lines.join('\n');
+            const blob = new Blob([content], { type: 'text/plain' });
+            const url = window.URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'grep_result.txt';
+            document.body.appendChild(a);
+            a.click();
+            
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
         }
     }))
 })
