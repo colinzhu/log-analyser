@@ -148,33 +148,45 @@ document.addEventListener('alpine:init', () => {
         processZipFile(file, onComplete) {
             const reader = new FileReader();
             reader.onload = async e => {
-                const zip = await JSZip.loadAsync(e.target.result);
-                const entries = Object.values(zip.files).filter(entry => !entry.dir);
-                
-                // Sort zip entries by name
-                entries.sort((a, b) => a.name.localeCompare(b.name));
+                try {
+                    const zip = await JSZip.loadAsync(e.target.result);
+                    const entries = Object.values(zip.files).filter(entry => !entry.dir);
+                    entries.sort((a, b) => a.name.localeCompare(b.name));
 
-                const processZipEntry = async (index) => {
-                    if (index >= entries.length || this.resultLineCount >= this.outputLimit) {
-                        onComplete();
-                        return;
-                    }
+                    // 使用 Promise.all 来并行处理所有文件
+                    await Promise.all(entries.map(async (entry) => {
+                        if (this.resultLineCount >= this.outputLimit) {
+                            return;
+                        }
 
-                    const entry = entries[index];
-                    const content = await entry.async('blob');
-                    const zipFile = new File([content], entry.name);
-                    const fullName = `${file.name}/${entry.name}`;
-                    
-                    const reader = new FileReader();
-                    reader.onload = e => {
-                        this.processChunk(e.target.result, fullName);
-                        processZipEntry(index + 1);
-                    };
-                    reader.readAsText(zipFile);
-                };
+                        try {
+                            const blob = await entry.async('blob');
+                            const zipFile = new File([blob], entry.name, {type: 'file'});
+                            const fullName = `${file.name}/${entry.name}`;
+                            
+                            // 使用已有的 processTextFile 方法来处理文件
+                            await new Promise((resolve) => {
+                                this.processTextFile(zipFile, () => {
+                                    resolve();
+                                });
+                            });
+                        } catch (error) {
+                            console.error(`Error processing entry ${entry.name}:`, error);
+                        }
+                    }));
 
-                processZipEntry(0);
+                    onComplete();
+                } catch (error) {
+                    console.error('Error processing ZIP file:', error);
+                    onComplete();
+                }
             };
+
+            reader.onerror = () => {
+                console.error('Error reading ZIP file');
+                onComplete();
+            };
+
             reader.readAsArrayBuffer(file);
         },
 
