@@ -107,6 +107,11 @@
                             x-bind:disabled="isProcessing || (!fileInput && !textInput)">
                         Search
                     </button>
+                    <button class="secondary" 
+                            @click="stopProcessing"
+                            x-show="isProcessing">
+                        Stop
+                    </button>
                     <button class="secondary outline" @click="reset">Reset</button>
                 </div>
             </div>

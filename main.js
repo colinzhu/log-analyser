@@ -1,6 +1,7 @@
 document.addEventListener('alpine:init', () => {
     Alpine.data('appData', () => ({
         // State
+        shouldStop: false,
         inputMethod: 'file',
         fileInput: null,
         files: [],
@@ -17,12 +18,18 @@ document.addEventListener('alpine:init', () => {
         isProcessing: false,
 
         // Methods
+        stopProcessing() {
+            this.shouldStop = true;
+            this.isProcessing = false;
+        },
+
         reset() {
             this.inputMethod = 'file';
             this.textInput = '';
             this.fileInput = null;
             this.clearResult();
             document.getElementById('fileInput').value = '';
+            this.shouldStop = false;
         },
 
         toggleWrap() {
@@ -37,6 +44,7 @@ document.addEventListener('alpine:init', () => {
         renderResult() {
             this.clearResult();
             this.isProcessing = true;
+            this.shouldStop = false;
             this.inputMethod === 'file' ? this.renderFromFileInput() : this.renderFromTextInput();
         },
 
@@ -147,15 +155,15 @@ document.addEventListener('alpine:init', () => {
 
         processZipFile(file, onComplete) {
             const reader = new FileReader();
-            reader.onload = async e => {
+            reader.onload = async (e) => {
                 try {
                     const zip = await JSZip.loadAsync(e.target.result);
                     const entries = Object.values(zip.files).filter(entry => !entry.dir);
                     entries.sort((a, b) => a.name.localeCompare(b.name));
 
-                    // 使用 Promise.all 来并行处理所有文件
+                    // 使用 Promise.all 并行处理所有文件
                     await Promise.all(entries.map(async (entry) => {
-                        if (this.resultLineCount >= this.outputLimit) {
+                        if (this.shouldStop || this.resultLineCount >= this.outputLimit) {
                             return;
                         }
 
@@ -164,45 +172,47 @@ document.addEventListener('alpine:init', () => {
                             const zipFile = new File([blob], entry.name, {type: 'file'});
                             const fullName = `${file.name}/${entry.name}`;
                             
-                            // 使用已有的 processTextFile 方法来处理文件
                             await new Promise((resolve) => {
                                 this.processTextFile(zipFile, () => {
                                     resolve();
-                                });
+                                }, fullName);
                             });
                         } catch (error) {
                             console.error(`Error processing entry ${entry.name}:`, error);
                         }
                     }));
 
+                    this.isProcessing = false;
                     onComplete();
                 } catch (error) {
                     console.error('Error processing ZIP file:', error);
+                    this.isProcessing = false;
                     onComplete();
                 }
             };
 
             reader.onerror = () => {
                 console.error('Error reading ZIP file');
+                this.isProcessing = false;
                 onComplete();
             };
 
             reader.readAsArrayBuffer(file);
         },
 
-        processTextFile(file, onComplete) {
+        processTextFile(file, onComplete, fullName = null) {
             const chunkSize = 1024 * 1024;
             let offset = 0;
             const reader = new FileReader();
 
             reader.onload = e => {
-                if (this.resultLineCount >= this.outputLimit) {
+                if (this.shouldStop || this.resultLineCount >= this.outputLimit) {
                     this.isProcessing = false;
                     onComplete();
                     return;
                 }
 
-                this.processChunk(e.target.result, file.name);
+                this.processChunk(e.target.result, fullName || file.name);
                 offset += chunkSize;
                 if (offset < file.size) {
                     readNextChunk();
@@ -223,7 +233,7 @@ document.addEventListener('alpine:init', () => {
             const lines = chunk.split("\n");
 
             for (let line of lines) {
-                if (this.resultLineCount >= this.outputLimit) break;
+                if (this.shouldStop || this.resultLineCount >= this.outputLimit) break;
                 this.processLine(line, includeRegexes, excludeRegexes, hideRegexes, fileName);
             }
         },
