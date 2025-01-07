@@ -73,4 +73,30 @@
 
 .results-content #result div:hover {
     background: var(--card-sectionning-background-color);
+}
+
+.selected-files {
+    margin-top: 0rem;
+    padding: 0 0.5rem;
+    background: var(--card-sectionning-background-color);
+    border-radius: var(--border-radius);
+}
+
+.selected-files small {
+    color: var(--muted-color);
+    display: inline-block;
+    margin-bottom: 0.25rem;
+}
+
+.selected-files ul {
+    margin: 0;
+    padding-left: 1.5rem;
+    list-style-type: none;
+}
+
+.selected-files li {
+    font-size: 0.85rem;
+    padding: 0.1rem 0;
+    color: var(--primary);
 } 
+

@@ -29,9 +29,17 @@
                             File Input
                         </label>
                     </header>
-                    <div x-show="inputMethod === 'file'" x-transition>
+                    <div x-transition>
                         <input type="file" id="fileInput" @change="onFileChanged" multiple
-                               accept=".txt,.log,.gz,.zip"/>
+                               accept=".txt,.log,.gz,.zip" x-bind:disabled="inputMethod === 'text'"/>
+                        <div x-show="files.length > 1" class="selected-files">
+                            <small>Selected files:</small>
+                            <ul>
+                                <template x-for="file in files" :key="file.name">
+                                    <li x-text="file.name"></li>
+                                </template>
+                            </ul>
+                        </div>
                         <small>Supports multiple files: Plain text, .gz, .zip files</small>
                     </div>
                 </article>
@@ -45,10 +53,10 @@
                             Text Input
                         </label>
                     </header>
-                    <div x-show="inputMethod === 'text'" x-transition>
+                    <div x-transition>
                         <textarea id="textInput" rows="2" 
                                  placeholder="Paste your text/log here..." 
-                                 x-model="textInput"></textarea>
+                                 x-model="textInput" x-bind:disabled="inputMethod === 'file'"></textarea>
                     </div>
                 </article>
             </div>
