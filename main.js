@@ -294,6 +294,13 @@ document.addEventListener('alpine:init', () => {
             
             window.URL.revokeObjectURL(url);
             document.body.removeChild(a);
+        },
+
+        copyToInput() {
+            const resultDiv = document.getElementById('result');
+            const lines = Array.from(resultDiv.children).map(div => div.textContent);
+            this.textInput = lines.join('\n');
+            this.inputMethod = 'text';
         }
     }))
 })
