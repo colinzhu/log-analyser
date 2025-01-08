@@ -54,9 +54,13 @@
 }
 
 .results-content #result div {
-    padding: 0.1rem 0;
+    padding: 0.25rem 0.5rem;
     border-bottom: 1px solid rgba(var(--card-border-color-rgb), 0.1);
     white-space: inherit;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
 }
 
 .results-content #result div:last-child {
@@ -65,10 +69,18 @@
 
 .total-lines {
     font-size: 0.9rem;
-    padding: 0.25rem 0.75rem;
+    padding: 0.4rem 0.75rem;
     background: var(--primary);
     color: var(--primary-inverse);
     border-radius: var(--border-radius);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.total-lines strong {
+    font-weight: 600;
 }
 
 .results-content #result div:hover {
@@ -98,5 +110,136 @@
     font-size: 0.85rem;
     padding: 0.1rem 0;
     color: var(--primary);
-} 
+}
+
+/* 上下文按钮样式 */
+.context-button {
+    padding: 0.25rem 0.5rem !important;
+    margin-left: 1rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+}
+
+.context-button svg {
+    width: 14px;
+    height: 14px;
+}
+
+/* 悬停效果 */
+.results-content #result div:hover {
+    background: var(--card-sectionning-background-color);
+}
+
+/* 上下文行样式 */
+.context-line {
+    color: var(--muted-color);
+    background: var(--card-sectionning-background-color);
+    border-left: 1px solid var(--card-border-color);
+    margin-left: -1px;
+}
+
+.context-line:hover {
+    opacity: 1 !important;
+}
+
+/* 标签页样式 */
+.tabs {
+    display: flex;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--card-border-color);
+    flex-wrap: wrap;
+    background: var(--card-sectionning-background-color);
+}
+
+.tab {
+    padding: 0.5rem 1rem;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: var(--background-color);
+    font-size: 0.9rem;
+    border: 1px solid var(--card-border-color);
+    transition: all 0.2s ease;
+}
+
+.tab:hover {
+    background: var(--primary-hover);
+    color: var(--primary-inverse);
+}
+
+.tab.active {
+    background: var(--primary);
+    color: var(--primary-inverse);
+    border-color: var(--primary);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.close-tab {
+    padding: 0.2rem 0.4rem;
+    margin: -0.2rem -0.4rem -0.2rem 0;
+    border: none;
+    background: none;
+    color: inherit;
+    font-size: 1.2rem;
+    cursor: pointer;
+    opacity: 0.5;
+    line-height: 1;
+    border-radius: 50%;
+    transition: all 0.2s ease;
+}
+
+.close-tab:hover {
+    opacity: 1;
+    background: rgba(0, 0, 0, 0.1);
+}
+
+.tab.active .close-tab:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.result-container {
+    padding: 0.5rem;
+    font-family: monospace;
+    font-size: 0.85rem;
+    line-height: 1.2;
+}
+
+.result-container div {
+    padding: 0.25rem 0.5rem;
+    border-bottom: 1px solid rgba(var(--card-border-color-rgb), 0.1);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: background-color 0.2s ease;
+}
+
+.result-container div pre {
+    margin: 0;
+    padding: 0;
+    background: none;
+    border: none;
+    flex: 1;
+    font-family: inherit;
+}
+
+/* 匹配行高亮样式 */
+.matched-line {
+    background: #fff3b0 !important;
+    border-left: 3px solid var(--primary) !important;
+    margin-left: -3px !important;
+    padding-left: calc(0.5rem - 3px) !important;
+}
+
+.matched-line:hover {
+    background: #ffe066 !important;
+}
+
+.matched-line::before {
+    display: none;
+}
 

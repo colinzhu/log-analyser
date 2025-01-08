@@ -164,12 +164,27 @@
         <article x-show="resultLineCount > 0" class="results">
             <div class="results-content">
                 <div class="results-header">
-                    <h4>Results</h4>
+                    <div class="tabs">
+                        <template x-for="tab in tabs" :key="tab.id">
+                            <div class="tab" 
+                                 :class="{ 'active': activeTab === tab.id }"
+                                 @click="activeTab = tab.id">
+                                <span x-text="tab.title"></span>
+                                <button x-show="tab.id !== 'main'"
+                                        class="close-tab"
+                                        @click.stop="closeTab(tab.id)">×</button>
+                            </div>
+                        </template>
+                    </div>
                     <div class="total-lines">
                         Total lines: <strong x-text="resultLineCount"></strong>
                     </div>
                 </div>
-                <div id="result" x-bind:style="isWrap ? 'white-space: normal' : 'white-space: nowrap'"></div>
+                <template x-for="tab in tabs" :key="tab.id">
+                    <div :id="'result-' + tab.id" 
+                         class="result-container"
+                         x-show="activeTab === tab.id"></div>
+                </template>
             </div>
         </article>
     </main>
