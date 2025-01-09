@@ -16,10 +16,6 @@ document.addEventListener('alpine:init', () => {
         isWrap: false,
         outputLimit: 1000,
         isProcessing: false,
-        contextLines: 0,  // 上下文行数，0表示普通搜索
-        activeTab: 'main',  // 当前激活的标签页
-        tabs: [{id: 'main', title: 'Search Result'}],  // 标签页列表
-        isContextSearch: false,  // 标识是否是上下文搜索
 
         // Methods
         stopProcessing() {
@@ -41,12 +37,8 @@ document.addEventListener('alpine:init', () => {
         },
 
         clearResult() {
-            // 只清除当前活动标签的内容
-            const resultDiv = document.getElementById(`result-${this.activeTab}`);
-            if (resultDiv) {
-                resultDiv.innerHTML = '';
-                this.resultLineCount = 0;
-            }
+            document.getElementById('result').innerHTML = '';
+            this.resultLineCount = 0;
         },
 
         renderResult() {
@@ -80,7 +72,6 @@ document.addEventListener('alpine:init', () => {
         },
 
         processLine(line, includeRegexes, excludeRegexes, hideRegexes, fileName) {
-            // 只处理普通搜索模式
             const include = includeRegexes.every(regex => regex.test(line));
             const exclude = excludeRegexes.every(regex => !regex.test(line));
 
@@ -88,7 +79,7 @@ document.addEventListener('alpine:init', () => {
                 hideRegexes.forEach(regex => {
                     line = line.replace(regex, "");
                 });
-                this.writeLine(line, { fileName });
+                this.writeLine(line, fileName);
             }
         },
 
@@ -247,150 +238,22 @@ document.addEventListener('alpine:init', () => {
         processChunk(chunk, fileName) {
             const { includeRegexes, excludeRegexes, hideRegexes } = this.buildRegexes();
             const lines = chunk.split("\n");
-            
-            lines.forEach((line, index) => {
-                if (this.shouldStop || this.resultLineCount >= this.outputLimit) return;
-                
-                if (this.isContextSearch) {
-                    // 上下文搜索模式
-                    // 使用 trim() 来忽略前后空格的差异
-                    if (line.trim() === this._contextSearchLine.trim()) {
-                        console.log('Found matching line:', line);  // 调试日志
-                        
-                        // 找到匹配行，获取其上下文
-                        const start = Math.max(0, index - this.contextLines);
-                        const end = Math.min(lines.length, index + this.contextLines + 1);
-                        
-                        for (let i = start; i < end; i++) {
-                            const contextLine = lines[i];
-                            // 传递 isMatchedLine 标记
-                            this.writeLine(contextLine, { 
-                                fileName,
-                                isMatchedLine: i === index  // 使用索引比较而不是内容比较
-                            });
-                        }
-                    }
-                } else {
-                    // 普通搜索模式
-                    this.processLine(line, includeRegexes, excludeRegexes, hideRegexes, fileName);
-                }
-            });
+
+            for (let line of lines) {
+                if (this.shouldStop || this.resultLineCount >= this.outputLimit) break;
+                this.processLine(line, includeRegexes, excludeRegexes, hideRegexes, fileName);
+            }
         },
 
-        writeLine(line, context) {
-            let resultDiv = document.getElementById(`result-${this.activeTab}`);
-            
-            if (!resultDiv) {
-                resultDiv = document.createElement('div');
-                resultDiv.id = `result-${this.activeTab}`;
-                resultDiv.className = 'result-container';
-                document.querySelector('.results-content').appendChild(resultDiv);
-            }
-
+        writeLine(line, fileName) {
+            const resultDiv = document.getElementById('result');
             const lineDiv = document.createElement('div');
-            const textPre = document.createElement('pre');
-            textPre.style.margin = '0';
-            textPre.style.display = 'inline';
-            textPre.textContent = line;
-            lineDiv.appendChild(textPre);
-
-            if (context?.fileName) {
-                lineDiv.title = `From: ${context.fileName}`;
+            lineDiv.textContent = line;
+            if (fileName) {
+                lineDiv.title = `From: ${fileName}`;
             }
-
-            // 只在主标签页显示上下文按钮
-            if (this.activeTab === 'main') {
-                lineDiv.onclick = () => {
-                    document.querySelectorAll('.context-button').forEach(btn => btn.remove());
-                    
-                    const contextButton = document.createElement('button');
-                    contextButton.className = 'context-button secondary outline';
-                    contextButton.innerHTML = `
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-                            <path d="M16 8s-3-5.5-8-5.5S0 8 0 8s3 5.5 8 5.5S16 8 16 8M1.173 8a13 13 0 0 1 1.66-2.043C4.12 4.668 5.88 3.5 8 3.5s3.879 1.168 5.168 2.457A13 13 0 0 1 14.828 8q-.086.13-.195.288c-.335.48-.83 1.12-1.465 1.755C11.879 11.332 10.119 12.5 8 12.5s-3.879-1.168-5.168-2.457A13 13 0 0 1 1.172 8z"/>
-                            <path d="M8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5M4.5 8a3.5 3.5 0 1 1 7 0 3.5 3.5 0 0 1-7 0"/>
-                        </svg>
-                        View Context
-                    `;
-                    contextButton.onclick = (e) => {
-                        e.stopPropagation();
-                        this.viewContextInNewTab(line, context?.fileName);
-                    };
-                    lineDiv.appendChild(contextButton);
-                };
-            }
-
             resultDiv.appendChild(lineDiv);
             this.resultLineCount++;
-        },
-
-        showContext(lineIndex, contextLines, clickedDiv, fileName) {
-            // 移除现有的上下文行
-            document.querySelectorAll('.context-line').forEach(div => div.remove());
-            document.querySelectorAll('.context-button').forEach(btn => btn.remove());
-
-            const contextStart = parseInt(clickedDiv.dataset.contextStart);
-            const lines = JSON.parse(clickedDiv.dataset.contextLines);
-            const currentLineIndex = lineIndex - contextStart;
-
-            // 显示前面的上下文行
-            const beforeLines = lines.slice(0, currentLineIndex);
-            // 显示后面的上下文行
-            const afterLines = lines.slice(currentLineIndex + 1);
-
-            // 插入后面的上下文（先插入后面的，这样前面的插入不会影响位置）
-            afterLines.forEach((line, i) => {
-                const contextDiv = document.createElement('div');
-                contextDiv.className = 'context-line';
-                const textPre = document.createElement('pre');
-                textPre.style.margin = '0';
-                textPre.style.display = 'inline';
-                textPre.textContent = line;
-                contextDiv.appendChild(textPre);
-                
-                if (fileName) {
-                    contextDiv.title = `From: ${fileName}`;
-                }
-                contextDiv.style.opacity = '0';
-                contextDiv.style.transform = 'translateY(-10px)';
-                
-                // 插入到当前行的后面
-                clickedDiv.parentNode.insertBefore(contextDiv, clickedDiv.nextSibling);
-                
-                // 触发动画
-                setTimeout(() => {
-                    contextDiv.style.transition = 'all 0.3s ease';
-                    contextDiv.style.opacity = '0.7';
-                    contextDiv.style.transform = 'translateY(0)';
-                }, 50 * i);
-            });
-
-            // 插入前面的上下文
-            beforeLines.reverse().forEach((line, i) => {
-                const contextDiv = document.createElement('div');
-                contextDiv.className = 'context-line';
-                const textPre = document.createElement('pre');
-                textPre.style.margin = '0';
-                textPre.style.display = 'inline';
-                textPre.textContent = line;
-                contextDiv.appendChild(textPre);
-                
-                if (fileName) {
-                    contextDiv.title = `From: ${fileName}`;
-                }
-                contextDiv.style.opacity = '0';
-                contextDiv.style.transform = 'translateY(10px)';
-                
-                // 插入到当前行的前面
-                clickedDiv.parentNode.insertBefore(contextDiv, clickedDiv);
-                
-                // 触发动画
-                setTimeout(() => {
-                    contextDiv.style.transition = 'all 0.3s ease';
-                    contextDiv.style.opacity = '0.7';
-                    contextDiv.style.transform = 'translateY(0)';
-                }, 50 * i);
-            });
         },
 
         sortResult(direction) {
@@ -438,69 +301,6 @@ document.addEventListener('alpine:init', () => {
             const lines = Array.from(resultDiv.children).map(div => div.textContent);
             this.textInput = lines.join('\n');
             this.inputMethod = 'text';
-        },
-
-        closeTab(tabId) {
-            const index = this.tabs.findIndex(tab => tab.id === tabId);
-            if (index !== -1) {
-                this.tabs.splice(index, 1);
-                // 如果关闭的是当前标签，切换到主标签
-                if (this.activeTab === tabId) {
-                    this.activeTab = 'main';
-                }
-                // 清理该标签的结果容器
-                const resultContainer = document.getElementById(`result-${tabId}`);
-                if (resultContainer) {
-                    resultContainer.innerHTML = '';
-                }
-            }
-        },
-
-        viewContextInNewTab(line, fileName) {
-            console.log('Starting context search for line:', line);
-            
-            // 创建新标签
-            const tabId = 'context-' + Date.now();
-            const tabTitle = `Context: ${line.substring(0, 30)}${line.length > 30 ? '...' : ''}`;
-            this.tabs.push({ id: tabId, title: tabTitle });
-            
-            // 切换到新标签并重置计数
-            this.activeTab = tabId;
-            this.resultLineCount = 0;
-            
-            // 清除所有用户输入
-            this.includeInput = '';
-            this.excludeInput = '';
-            this.hideInput = '';
-            
-            // 设置上下文搜索参数
-            this.contextLines = 50;
-            this._contextSearchLine = line.trim();
-            this.isContextSearch = true;
-            
-            // 执行搜索
-            this.renderResult();
-            
-            // 在搜索完成后应用高亮
-            setTimeout(() => {
-                const resultDiv = document.getElementById(`result-${tabId}`);
-                if (resultDiv) {
-                    const lines = resultDiv.children;
-                    for (let lineDiv of lines) {
-                        const lineContent = lineDiv.textContent.trim();
-                        if (lineContent === this._contextSearchLine.trim()) {
-                            lineDiv.classList.add('matched-line');
-                            lineDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                            break;  // 找到第一个匹配就停止
-                        }
-                    }
-                }
-                
-                // 清理上下文搜索状态
-                this.contextLines = 0;
-                this.isContextSearch = false;
-                this._contextSearchLine = null;
-            }, 100);  // 给搜索一些时间完成
         }
     }))
 })
