@@ -14,9 +14,10 @@
 </head>
 
 <body x-data="appData">
-    <nav class="container-fluid">
-        <h1>Log Grep</h1>
-    </nav>
+    <div class="container-fluid">
+            <h1 style="margin-bottom:0">Log Grep</h1>
+            <small style="color: #666;margin-left: 2px;">Files are processed locally, no data is sent to the server.</small>
+    </div>
 
     <main class="container-fluid">
         <!-- Input Method Selection -->
@@ -161,7 +162,7 @@
         </div>
 
         <!-- Results -->
-        <article x-show="resultLineCount > 0" class="results">
+        <article x-show="resultLineCount > -1" class="results">
             <div class="results-content">
                 <div class="results-header">
                     <h4>Results</h4>

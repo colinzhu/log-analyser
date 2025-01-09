@@ -12,7 +12,7 @@ document.addEventListener('alpine:init', () => {
         excludeInputCase: false,
         hideInput: '',
         hideInputCase: false,
-        resultLineCount: 0,
+        resultLineCount: -1,
         isWrap: false,
         outputLimit: 1000,
         isProcessing: false,
@@ -30,6 +30,7 @@ document.addEventListener('alpine:init', () => {
             this.clearResult();
             document.getElementById('fileInput').value = '';
             this.shouldStop = false;
+            this.resultLineCount = -1;
         },
 
         toggleWrap() {
