@@ -54,37 +54,32 @@ document.addEventListener('alpine:init', () => {
         async showContext(lineId) {
             if (!db || this.contextLimit <= 0) return;
             
-            // 移除所有行的选中状态
-            document.querySelectorAll('.matched-line').forEach(el => {
-                el.classList.remove('selected');
-            });
-            
             // 如果点击的是同一行，则隐藏上下文
             if (this.selectedLineId === lineId) {
-                this.selectedLineId = null;
-                // 移除所有上下文行
                 document.querySelectorAll('.context-line').forEach(el => el.remove());
+                document.querySelectorAll('.matched-line').forEach(el => el.classList.remove('selected'));
+                this.selectedLineId = null;
                 return;
             }
 
-            this.selectedLineId = lineId;
+            // 移除之前的上下文行和选中状态
+            document.querySelectorAll('.context-line').forEach(el => el.remove());
+            document.querySelectorAll('.matched-line').forEach(el => el.classList.remove('selected'));
             
-            // 添加选中状态到当前行
+            // 设置新的选中行
+            this.selectedLineId = lineId;
             const clickedDiv = document.querySelector(`[data-line-id="${lineId}"]`);
             if (clickedDiv) {
                 clickedDiv.classList.add('selected');
             }
-            
+
             const transaction = db.transaction(['contextLines'], 'readonly');
             const store = transaction.objectStore('contextLines');
-            const request = store.get(lineId);
+            const request = store.get(parseInt(lineId));
 
             request.onsuccess = (event) => {
                 const data = event.target.result;
                 if (!data || !clickedDiv) return;
-
-                // 移除现有的上下文行
-                document.querySelectorAll('.context-line').forEach(el => el.remove());
 
                 // 按相对位置排序上下文行
                 const contextLines = data.contextLines
@@ -111,7 +106,15 @@ document.addEventListener('alpine:init', () => {
                 });
 
                 // 添加匹配的行的克隆
-                const matchedLine = clickedDiv.cloneNode(true);
+                const matchedLine = document.createElement('div');
+                matchedLine.className = 'matched-line selected';
+                matchedLine.textContent = data.matchedLine;
+                matchedLine.dataset.lineId = lineId;
+                if (data.fileName) {
+                    matchedLine.title = `From: ${data.fileName}`;
+                }
+                // 重要：确保绑定点击事件
+                matchedLine.onclick = () => this.showContext(lineId);
                 fragment.appendChild(matchedLine);
 
                 // 添加后面的上下文行
@@ -125,7 +128,7 @@ document.addEventListener('alpine:init', () => {
                     fragment.appendChild(contextDiv);
                 });
 
-                // 替换原始的匹配行及其上下文
+                // 替换原始的匹配行
                 clickedDiv.parentNode.insertBefore(fragment, clickedDiv);
                 clickedDiv.remove();
             };
