@@ -168,9 +168,72 @@ document.addEventListener('alpine:init', () => {
             const { includeRegexes, excludeRegexes, hideRegexes } = this.buildRegexes();
             const lines = this.textInput.split("\n");
 
-            for (let line of lines) {
-                if (this.resultLineCount >= this.outputLimit) break;
-                this.processLine(line, includeRegexes, excludeRegexes, hideRegexes);
+            // 使用与文件处理相同的逻辑
+            if (this.contextLimit > 0) {
+                // 先找到所有匹配的行
+                const matchedIndexes = [];
+                lines.forEach((line, index) => {
+                    if (this.resultLineCount >= this.outputLimit) return;
+                    
+                    const include = includeRegexes.every(regex => regex.test(line));
+                    const exclude = excludeRegexes.every(regex => !regex.test(line));
+                    
+                    if (include && exclude) {
+                        matchedIndexes.push(index);
+                    }
+                });
+
+                // 处理每个匹配的行及其上下文
+                for (const index of matchedIndexes) {
+                    if (this.resultLineCount >= this.outputLimit) break;
+
+                    const line = lines[index];
+                    let processedLine = line;
+                    hideRegexes.forEach(regex => {
+                        processedLine = processedLine.replace(regex, "");
+                    });
+
+                    // 存储上下文到 IndexedDB
+                    const contextStart = Math.max(0, index - this.contextLimit);
+                    const contextEnd = Math.min(lines.length - 1, index + this.contextLimit);
+                    
+                    // 创建带有相对位置的上下文行数组
+                    const contextLines = [];
+                    for (let i = contextStart; i <= contextEnd; i++) {
+                        contextLines.push({
+                            text: lines[i],
+                            relativePosition: i - index  // 相对于匹配行的位置
+                        });
+                    }
+
+                    const lineId = this.resultLineCount + 1;
+                    const transaction = db.transaction(['contextLines'], 'readwrite');
+                    const store = transaction.objectStore('contextLines');
+
+                    store.add({
+                        id: lineId,
+                        fileName: null,
+                        contextLines: contextLines,
+                        matchedLine: line
+                    });
+
+                    // 写入匹配的行
+                    const resultDiv = document.getElementById('result');
+                    const lineDiv = document.createElement('div');
+                    lineDiv.textContent = processedLine;
+                    lineDiv.className = 'matched-line';
+                    lineDiv.dataset.lineId = lineId;
+                    lineDiv.onclick = () => this.showContext(lineId);
+
+                    resultDiv.appendChild(lineDiv);
+                    this.resultLineCount++;
+                }
+            } else {
+                // 如果不需要上下文，使用原来的逻辑
+                for (let line of lines) {
+                    if (this.resultLineCount >= this.outputLimit) break;
+                    this.processLine(line, includeRegexes, excludeRegexes, hideRegexes);
+                }
             }
             this.isProcessing = false;
         },
