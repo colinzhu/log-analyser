@@ -81,42 +81,53 @@ document.addEventListener('alpine:init', () => {
 
             request.onsuccess = (event) => {
                 const data = event.target.result;
-                if (!data) return;
+                if (!data || !clickedDiv) return;
 
                 // 移除现有的上下文行
                 document.querySelectorAll('.context-line').forEach(el => el.remove());
 
-                if (!clickedDiv) return;
+                // 按相对位置排序上下文行
+                const contextLines = data.contextLines
+                    .filter(line => line.relativePosition !== 0)  // 排除匹配行本身
+                    .filter(line => Math.abs(line.relativePosition) <= this.contextLimit)  // 限制上下文范围
+                    .sort((a, b) => a.relativePosition - b.relativePosition);  // 按相对位置排序
 
-                // 显示上下文行
-                const currentLineIndex = data.lineNumber;  // 已经是相对位置了
+                // 分离前后上下文行
+                const beforeLines = contextLines.filter(line => line.relativePosition < 0);
+                const afterLines = contextLines.filter(line => line.relativePosition > 0);
+
+                // 创建一个文档片段来提高性能
+                const fragment = document.createDocumentFragment();
                 
-                // 显示前面的上下文行（最多显示 contextLimit 行）
-                const beforeLines = data.lines.slice(0, currentLineIndex);
-                // 显示后面的上下文行（最多显示 contextLimit 行）
-                const afterLines = data.lines.slice(currentLineIndex + 1);
-
-                // 插入后面的上下文（限制为 contextLimit 行）
-                afterLines.slice(0, this.contextLimit).forEach((line, i) => {
+                // 先添加前面的上下文行（按照从上到下的顺序）
+                beforeLines.forEach(({text}) => {
                     const contextDiv = document.createElement('div');
                     contextDiv.className = 'context-line';
-                    contextDiv.textContent = line;
+                    contextDiv.textContent = text;
                     if (data.fileName) {
                         contextDiv.title = `From: ${data.fileName}`;
                     }
-                    clickedDiv.parentNode.insertBefore(contextDiv, clickedDiv.nextSibling);
+                    fragment.appendChild(contextDiv);
                 });
 
-                // 插入前面的上下文（限制为 contextLimit 行）
-                beforeLines.slice(-this.contextLimit).reverse().forEach((line, i) => {
+                // 添加匹配的行的克隆
+                const matchedLine = clickedDiv.cloneNode(true);
+                fragment.appendChild(matchedLine);
+
+                // 添加后面的上下文行
+                afterLines.forEach(({text}) => {
                     const contextDiv = document.createElement('div');
                     contextDiv.className = 'context-line';
-                    contextDiv.textContent = line;
+                    contextDiv.textContent = text;
                     if (data.fileName) {
                         contextDiv.title = `From: ${data.fileName}`;
                     }
-                    clickedDiv.parentNode.insertBefore(contextDiv, clickedDiv);
+                    fragment.appendChild(contextDiv);
                 });
+
+                // 替换原始的匹配行及其上下文
+                clickedDiv.parentNode.insertBefore(fragment, clickedDiv);
+                clickedDiv.remove();
             };
         },
 
@@ -372,7 +383,15 @@ document.addEventListener('alpine:init', () => {
                     // 存储上下文到 IndexedDB
                     const contextStart = Math.max(0, index - this.contextLimit);
                     const contextEnd = Math.min(lines.length - 1, index + this.contextLimit);
-                    const contextLines = lines.slice(contextStart, contextEnd + 1);
+                    
+                    // 创建带有相对位置的上下文行数组
+                    const contextLines = [];
+                    for (let i = contextStart; i <= contextEnd; i++) {
+                        contextLines.push({
+                            text: lines[i],
+                            relativePosition: i - index  // 相对于匹配行的位置
+                        });
+                    }
 
                     const lineId = this.resultLineCount + 1;
                     const transaction = db.transaction(['contextLines'], 'readwrite');
@@ -380,11 +399,9 @@ document.addEventListener('alpine:init', () => {
 
                     store.add({
                         id: lineId,
-                        lineNumber: index - contextStart,  // 存储相对位置
                         fileName: fileName,
-                        lines: contextLines,
-                        matchedLine: line,
-                        contextStart: contextStart
+                        contextLines: contextLines,
+                        matchedLine: line
                     });
 
                     // 写入匹配的行
