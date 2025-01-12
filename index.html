@@ -104,6 +104,18 @@
                         <option value="999999999">No limit</option>
                     </select>
                 </div>
+
+                <div>
+                    <label for="outputLimit">Context Limit</label>
+                    <select id="outputLimit" x-model="contextLimit">
+                        <option value="500">500 lines</option>
+                        <option value="200">200 lines</option>
+                        <option value="100">100 lines</option>
+                        <option value="50">50 lines</option>
+                        <option value="10">10 lines</option>
+                        <option value="0">No context</option>
+                    </select>
+                </div>
             </div>
         </article>
 

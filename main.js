@@ -1,4 +1,29 @@
 document.addEventListener('alpine:init', () => {
+    // 初始化 IndexedDB
+    let db;
+    const initDB = () => {
+        const request = indexedDB.open('LogGrepDB', 1);
+        
+        request.onerror = (event) => {
+            console.error('IndexedDB error:', event.target.error);
+        };
+        
+        request.onupgradeneeded = (event) => {
+            db = event.target.result;
+            if (!db.objectStoreNames.contains('contextLines')) {
+                const store = db.createObjectStore('contextLines', { keyPath: 'id', autoIncrement: true });
+                store.createIndex('lineNumber', 'lineNumber', { unique: false });
+                store.createIndex('fileName', 'fileName', { unique: false });
+            }
+        };
+        
+        request.onsuccess = (event) => {
+            db = event.target.result;
+        };
+    };
+    
+    initDB();
+
     Alpine.data('appData', () => ({
         // State
         shouldStop: false,
@@ -15,9 +40,86 @@ document.addEventListener('alpine:init', () => {
         resultLineCount: -1,
         isWrap: false,
         outputLimit: 1000,
+        contextLimit: 0,
         isProcessing: false,
+        selectedLineId: null,
 
         // Methods
+        clearContextStore() {
+            const transaction = db.transaction(['contextLines'], 'readwrite');
+            const store = transaction.objectStore('contextLines');
+            store.clear();
+        },
+
+        async showContext(lineId) {
+            if (!db || this.contextLimit <= 0) return;
+            
+            // 移除所有行的选中状态
+            document.querySelectorAll('.matched-line').forEach(el => {
+                el.classList.remove('selected');
+            });
+            
+            // 如果点击的是同一行，则隐藏上下文
+            if (this.selectedLineId === lineId) {
+                this.selectedLineId = null;
+                // 移除所有上下文行
+                document.querySelectorAll('.context-line').forEach(el => el.remove());
+                return;
+            }
+
+            this.selectedLineId = lineId;
+            
+            // 添加选中状态到当前行
+            const clickedDiv = document.querySelector(`[data-line-id="${lineId}"]`);
+            if (clickedDiv) {
+                clickedDiv.classList.add('selected');
+            }
+            
+            const transaction = db.transaction(['contextLines'], 'readonly');
+            const store = transaction.objectStore('contextLines');
+            const request = store.get(lineId);
+
+            request.onsuccess = (event) => {
+                const data = event.target.result;
+                if (!data) return;
+
+                // 移除现有的上下文行
+                document.querySelectorAll('.context-line').forEach(el => el.remove());
+
+                if (!clickedDiv) return;
+
+                // 显示上下文行
+                const currentLineIndex = data.lineNumber;  // 已经是相对位置了
+                
+                // 显示前面的上下文行（最多显示 contextLimit 行）
+                const beforeLines = data.lines.slice(0, currentLineIndex);
+                // 显示后面的上下文行（最多显示 contextLimit 行）
+                const afterLines = data.lines.slice(currentLineIndex + 1);
+
+                // 插入后面的上下文（限制为 contextLimit 行）
+                afterLines.slice(0, this.contextLimit).forEach((line, i) => {
+                    const contextDiv = document.createElement('div');
+                    contextDiv.className = 'context-line';
+                    contextDiv.textContent = line;
+                    if (data.fileName) {
+                        contextDiv.title = `From: ${data.fileName}`;
+                    }
+                    clickedDiv.parentNode.insertBefore(contextDiv, clickedDiv.nextSibling);
+                });
+
+                // 插入前面的上下文（限制为 contextLimit 行）
+                beforeLines.slice(-this.contextLimit).reverse().forEach((line, i) => {
+                    const contextDiv = document.createElement('div');
+                    contextDiv.className = 'context-line';
+                    contextDiv.textContent = line;
+                    if (data.fileName) {
+                        contextDiv.title = `From: ${data.fileName}`;
+                    }
+                    clickedDiv.parentNode.insertBefore(contextDiv, clickedDiv);
+                });
+            };
+        },
+
         stopProcessing() {
             this.shouldStop = true;
             this.isProcessing = false;
@@ -44,8 +146,10 @@ document.addEventListener('alpine:init', () => {
 
         renderResult() {
             this.clearResult();
+            this.clearContextStore();
             this.isProcessing = true;
             this.shouldStop = false;
+            this.selectedLineId = null;
             this.inputMethod === 'file' ? this.renderFromFileInput() : this.renderFromTextInput();
         },
 
@@ -239,10 +343,72 @@ document.addEventListener('alpine:init', () => {
         processChunk(chunk, fileName) {
             const { includeRegexes, excludeRegexes, hideRegexes } = this.buildRegexes();
             const lines = chunk.split("\n");
+            
+            // 如果需要上下文，存储所有行
+            if (this.contextLimit > 0) {
+                // 先找到所有匹配的行
+                const matchedIndexes = [];
+                lines.forEach((line, index) => {
+                    if (this.shouldStop || this.resultLineCount >= this.outputLimit) return;
+                    
+                    const include = includeRegexes.every(regex => regex.test(line));
+                    const exclude = excludeRegexes.every(regex => !regex.test(line));
+                    
+                    if (include && exclude) {
+                        matchedIndexes.push(index);
+                    }
+                });
 
-            for (let line of lines) {
-                if (this.shouldStop || this.resultLineCount >= this.outputLimit) break;
-                this.processLine(line, includeRegexes, excludeRegexes, hideRegexes, fileName);
+                // 处理每个匹配的行及其上下文
+                for (const index of matchedIndexes) {
+                    if (this.shouldStop || this.resultLineCount >= this.outputLimit) break;
+
+                    const line = lines[index];
+                    let processedLine = line;
+                    hideRegexes.forEach(regex => {
+                        processedLine = processedLine.replace(regex, "");
+                    });
+
+                    // 存储上下文到 IndexedDB
+                    const contextStart = Math.max(0, index - this.contextLimit);
+                    const contextEnd = Math.min(lines.length - 1, index + this.contextLimit);
+                    const contextLines = lines.slice(contextStart, contextEnd + 1);
+
+                    const lineId = this.resultLineCount + 1;
+                    const transaction = db.transaction(['contextLines'], 'readwrite');
+                    const store = transaction.objectStore('contextLines');
+
+                    store.add({
+                        id: lineId,
+                        lineNumber: index - contextStart,  // 存储相对位置
+                        fileName: fileName,
+                        lines: contextLines,
+                        matchedLine: line,
+                        contextStart: contextStart
+                    });
+
+                    // 写入匹配的行
+                    const resultDiv = document.getElementById('result');
+                    const lineDiv = document.createElement('div');
+                    lineDiv.textContent = processedLine;
+                    lineDiv.className = 'matched-line';
+                    
+                    if (fileName) {
+                        lineDiv.title = `From: ${fileName}`;
+                    }
+
+                    lineDiv.dataset.lineId = lineId;
+                    lineDiv.onclick = () => this.showContext(lineId);
+
+                    resultDiv.appendChild(lineDiv);
+                    this.resultLineCount++;
+                }
+            } else {
+                // 如果不需要上下文，直接处理每一行
+                lines.forEach(line => {
+                    if (this.shouldStop || this.resultLineCount >= this.outputLimit) return;
+                    this.processLine(line, includeRegexes, excludeRegexes, hideRegexes, fileName);
+                });
             }
         },
 
@@ -250,30 +416,62 @@ document.addEventListener('alpine:init', () => {
             const resultDiv = document.getElementById('result');
             const lineDiv = document.createElement('div');
             lineDiv.textContent = line;
+            lineDiv.className = 'matched-line';
+            
             if (fileName) {
                 lineDiv.title = `From: ${fileName}`;
             }
+
+            // 只有在需要上下文时才添加点击事件
+            if (this.contextLimit > 0) {
+                const lineId = this.resultLineCount + 1;
+                lineDiv.dataset.lineId = lineId;
+                lineDiv.onclick = () => this.showContext(lineId);
+            }
+
             resultDiv.appendChild(lineDiv);
             this.resultLineCount++;
         },
 
         sortResult(direction) {
             const resultDiv = document.getElementById('result');
-            // Save both text content and file name
+            // 移除所有上下文行
+            document.querySelectorAll('.context-line').forEach(el => el.remove());
+
+            // 保存文本内容和文件名
             const lines = Array.from(resultDiv.children).map(div => ({
                 text: div.textContent,
-                fileName: div.title.replace('From: ', '')  // Extract original file name
+                fileName: div.title.replace('From: ', ''),
+                lineId: div.dataset.lineId,
+                isSelected: div.classList.contains('selected')
             }));
             
-            // Sort by text content
+            // 按文本内容排序
             lines.sort((a, b) => direction === 'asc' ? 
                 a.text.localeCompare(b.text) : 
                 b.text.localeCompare(a.text)
             );
             
-            this.clearResult();
-            // Restore both text and file name
-            lines.forEach(line => this.writeLine(line.text, line.fileName));
+            // 清除当前结果
+            resultDiv.innerHTML = '';
+            
+            // 重新渲染排序后的结果
+            lines.forEach(line => {
+                const lineDiv = document.createElement('div');
+                lineDiv.textContent = line.text;
+                lineDiv.className = 'matched-line';
+                if (line.isSelected) {
+                    lineDiv.classList.add('selected');
+                }
+                if (line.fileName) {
+                    lineDiv.title = `From: ${line.fileName}`;
+                }
+                if (line.lineId) {
+                    lineDiv.dataset.lineId = line.lineId;
+                    lineDiv.onclick = () => this.showContext(line.lineId);
+                }
+                resultDiv.appendChild(lineDiv);
+            });
         },
 
         saveResult() {
