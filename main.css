@@ -108,8 +108,7 @@
 }
 
 .matched-line:hover {
-    background-color: var(--primary-hover);
-    color: var(--primary-inverse);
+    background-color: #eee !important;
 }
 
 .matched-line.selected {
@@ -132,7 +131,7 @@
     transition: opacity 0.2s ease;
 }
 
-.context-line:hover {
-    opacity: 1;
+.results-content #result .context-line:hover {
+    background-color: #eee !important;
 }
 
