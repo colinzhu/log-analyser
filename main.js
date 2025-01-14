@@ -43,6 +43,7 @@ document.addEventListener('alpine:init', () => {
         contextLimit: 0,
         isProcessing: false,
         selectedLineId: null,
+        urlInput: '',
 
         // Methods
         clearContextStore() {
@@ -142,6 +143,7 @@ document.addEventListener('alpine:init', () => {
         reset() {
             this.inputMethod = 'file';
             this.textInput = '';
+            this.urlInput = '';
             this.fileInput = null;
             this.clearResult();
             document.getElementById('fileInput').value = '';
@@ -158,13 +160,30 @@ document.addEventListener('alpine:init', () => {
             this.resultLineCount = 0;
         },
 
-        renderResult() {
+        async renderResult() {
             this.clearResult();
             this.clearContextStore();
             this.isProcessing = true;
             this.shouldStop = false;
             this.selectedLineId = null;
-            this.inputMethod === 'file' ? this.renderFromFileInput() : this.renderFromTextInput();
+
+            if (this.inputMethod === 'url') {
+                try {
+                    const response = await fetch(this.urlInput);
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    this.textInput = await response.text();
+                    this.renderFromTextInput();
+                } catch (error) {
+                    console.error('Error fetching URL:', error);
+                    const resultDiv = document.getElementById('result');
+                    resultDiv.innerHTML = `<div class="error">Error fetching URL: ${error.message}</div>`;
+                    this.isProcessing = false;
+                }
+            } else {
+                this.inputMethod === 'file' ? this.renderFromFileInput() : this.renderFromTextInput();
+            }
         },
 
         renderFromTextInput() {

@@ -61,6 +61,24 @@
                     </div>
                 </article>
             </div>
+
+            <div>
+                <article>
+                    <header>
+                        <label style="margin-bottom:0">
+                            <input type="radio" name="inputMethod" value="url" x-model="inputMethod"/>
+                            URL Input
+                        </label>
+                    </header>
+                    <div x-transition>
+                        <input type="url" id="urlInput" 
+                               placeholder="Enter log file URL..." 
+                               x-model="urlInput" 
+                               x-bind:disabled="inputMethod !== 'url'"/>
+                        <small>Direct link to plain text log file</small>
+                    </div>
+                </article>
+            </div>
         </div>
 
         <!-- Filter Options -->
@@ -125,7 +143,7 @@
                 <div class="button-group">
                     <button class="primary" @click="renderResult" 
                             x-bind:aria-busy="isProcessing" 
-                            x-bind:disabled="isProcessing || (!fileInput && !textInput)">
+                            x-bind:disabled="isProcessing || (inputMethod === 'file' && !fileInput) || (inputMethod === 'text' && !textInput) || (inputMethod === 'url' && !urlInput)">
                         Search
                     </button>
                     <button class="secondary" 
