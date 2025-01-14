@@ -45,6 +45,98 @@ document.addEventListener('alpine:init', () => {
         selectedLineId: null,
         urlInput: '',
 
+        // Setters
+        setInputMethod() {
+            this.inputMethod = this.$el.value;
+        },
+
+        setTextInput() {
+            this.textInput = this.$el.value;
+        },
+
+        setUrlInput() {
+            this.urlInput = this.$el.value;
+        },
+
+        setIncludeInput() {
+            this.includeInput = this.$el.value;
+        },
+
+        setIncludeInputCase() {
+            this.includeInputCase = this.$el.checked;
+        },
+
+        setExcludeInput() {
+            this.excludeInput = this.$el.value;
+        },
+
+        setExcludeInputCase() {
+            this.excludeInputCase = this.$el.checked;
+        },
+
+        setHideInput() {
+            this.hideInput = this.$el.value;
+        },
+
+        setHideInputCase() {
+            this.hideInputCase = this.$el.checked;
+        },
+
+        setOutputLimit() {
+            this.outputLimit = parseInt(this.$el.value);
+        },
+
+        setContextLimit() {
+            this.contextLimit = parseInt(this.$el.value);
+        },
+
+        // Computed properties
+        showProcessingButton() {
+            return this.isProcessing;
+        },
+
+        showResultActions() {
+            return this.resultLineCount > 0;
+        },
+
+        showResults() {
+            return this.resultLineCount > -1;
+        },
+
+        showSelectedFiles() {
+            return this.files.length > 1;
+        },
+
+        isSearchDisabled() {
+            return this.isProcessing || 
+                   (this.inputMethod === 'file' && !this.fileInput) || 
+                   (this.inputMethod === 'text' && !this.textInput) || 
+                   (this.inputMethod === 'url' && !this.urlInput);
+        },
+
+        getWrapStyle() {
+            return this.isWrap ? 'white-space: normal' : 'white-space: nowrap';
+        },
+
+        getWrapButtonText() {
+            return this.isWrap ? 'Nowrap' : 'Wrap';
+        },
+
+        isFileInputDisabled() {
+            return this.inputMethod === 'text';
+        },
+
+        isTextInputDisabled() {
+            return this.inputMethod === 'file';
+        },
+
+        isUrlInputDisabled() {
+            return this.inputMethod !== 'url';
+        },
+        isInputMethodChecked() {
+            return this.inputMethod === this.$el.value;
+        },
+
         // Methods
         clearContextStore() {
             const transaction = db.transaction(['contextLines'], 'readwrite');

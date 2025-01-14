@@ -1,0 +1,28 @@
+{
+  "manifest_version": 3,
+  "name": "Log Grep",
+  "version": "1.0",
+  "description": "A powerful log file analysis tool",
+  "permissions": [
+    "activeTab",
+    "scripting"
+  ],
+  "action": {
+    "default_title": "Log Grep"
+  },
+  "web_accessible_resources": [{
+    "resources": [
+      "lib/*",
+      "*.js",
+      "*.css"
+    ],
+    "matches": ["<all_urls>"]
+  }],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self' ; object-src 'self'"
+  }
+} 
