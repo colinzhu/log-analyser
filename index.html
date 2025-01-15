@@ -67,7 +67,7 @@
                 </article>
             </div>
 
-            <div>
+            <div x-show="isChromeExtension">
                 <article>
                     <header>
                         <label style="margin-bottom:0">
@@ -83,7 +83,7 @@
                                :value="urlInput"
                                @input="setUrlInput" 
                                x-bind:disabled="isUrlInputDisabled"/>
-                        <small>Direct link to plain text log file</small>
+                        <small>URL of text, .gz, .zip files</small>
                     </div>
                 </article>
             </div>

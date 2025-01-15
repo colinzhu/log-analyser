@@ -44,19 +44,24 @@ document.addEventListener('alpine:init', () => {
         isProcessing: false,
         selectedLineId: null,
         urlInput: '',
+        isChromeExtension: false,
 
         init() {
             // 从 URL 参数中获取初始值
             const params = new URLSearchParams(window.location.search);
             const initialInputMethod = params.get('inputMethod');
             const initialUrl = params.get('url');
-            
+            const isChromeExtension = params.get('isChromeExtension');
             if (initialInputMethod) {
                 this.inputMethod = initialInputMethod;
             }
             
             if (initialUrl) {
                 this.urlInput = initialUrl;
+            }
+            
+            if (isChromeExtension) {
+                this.isChromeExtension = true;
             }
         },
 
@@ -138,11 +143,11 @@ document.addEventListener('alpine:init', () => {
         },
 
         isFileInputDisabled() {
-            return this.inputMethod === 'text';
+            return this.inputMethod !== 'file';
         },
 
         isTextInputDisabled() {
-            return this.inputMethod === 'file';
+            return this.inputMethod !== 'text';
         },
 
         isUrlInputDisabled() {
