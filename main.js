@@ -271,12 +271,17 @@ document.addEventListener('alpine:init', () => {
                     if (!response.ok) {
                         throw new Error(`HTTP error! status: ${response.status}`);
                     }
-                    this.textInput = await response.text();
-                    this.renderFromTextInput();
+                    const blob = await response.blob();
+                    const fileName = this.urlInput.split('?')[0].split('/').pop() || 'downloaded.log';
+                    const file = new File([blob], fileName);
+                    
+                    this.files = [file];
+                    this.renderFromFileInput();
                 } catch (error) {
                     console.error('Error fetching URL:', error);
                     const resultDiv = document.getElementById('result');
                     resultDiv.innerHTML = `<div class="error">Error fetching URL: ${error.message}</div>`;
+                } finally {
                     this.isProcessing = false;
                 }
             } else {
@@ -474,7 +479,7 @@ document.addEventListener('alpine:init', () => {
 
                         try {
                             const blob = await entry.async('blob');
-                            const zipFile = new File([blob], entry.name, {type: 'file'});
+                            const zipFile = new File([blob], entry.name);
                             const fullName = `${file.name}/${entry.name}`;
                             
                             await new Promise((resolve) => {
