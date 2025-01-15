@@ -115,7 +115,7 @@ document.addEventListener('alpine:init', () => {
         },
 
         getWrapStyle() {
-            return this.isWrap ? 'white-space: normal' : 'white-space: nowrap';
+            return this.isWrap ? 'white-space: pre-wrap' : 'white-space: pre';
         },
 
         getWrapButtonText() {
