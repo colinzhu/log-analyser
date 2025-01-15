@@ -206,8 +206,8 @@ document.addEventListener('alpine:init', () => {
                 if (data.fileName) {
                     matchedLine.title = `From: ${data.fileName}`;
                 }
-                // 重要：确保绑定点击事件
-                matchedLine.onclick = () => this.showContext(lineId);
+                // 重要：确保绑定双击事件
+                matchedLine.ondblclick = () => this.showContext(lineId);
                 fragment.appendChild(matchedLine);
 
                 // 添加后面的上下文行
@@ -337,7 +337,7 @@ document.addEventListener('alpine:init', () => {
                     lineDiv.textContent = processedLine;
                     lineDiv.className = 'matched-line';
                     lineDiv.dataset.lineId = lineId;
-                    lineDiv.onclick = () => this.showContext(lineId);
+                    lineDiv.ondblclick = () => this.showContext(lineId);
 
                     resultDiv.appendChild(lineDiv);
                     this.resultLineCount++;
@@ -592,7 +592,7 @@ document.addEventListener('alpine:init', () => {
                     }
 
                     lineDiv.dataset.lineId = lineId;
-                    lineDiv.onclick = () => this.showContext(lineId);
+                    lineDiv.ondblclick = () => this.showContext(lineId);
 
                     resultDiv.appendChild(lineDiv);
                     this.resultLineCount++;
@@ -616,11 +616,11 @@ document.addEventListener('alpine:init', () => {
                 lineDiv.title = `From: ${fileName}`;
             }
 
-            // 只有在需要上下文时才添加点击事件
+            // 只有在需要上下文时才添加双击事件
             if (this.contextLimit > 0) {
                 const lineId = this.resultLineCount + 1;
                 lineDiv.dataset.lineId = lineId;
-                lineDiv.onclick = () => this.showContext(lineId);
+                lineDiv.ondblclick = () => this.showContext(lineId);
             }
 
             resultDiv.appendChild(lineDiv);
@@ -662,7 +662,7 @@ document.addEventListener('alpine:init', () => {
                 }
                 if (line.lineId) {
                     lineDiv.dataset.lineId = line.lineId;
-                    lineDiv.onclick = () => this.showContext(line.lineId);
+                    lineDiv.ondblclick = () => this.showContext(line.lineId);
                 }
                 resultDiv.appendChild(lineDiv);
             });
