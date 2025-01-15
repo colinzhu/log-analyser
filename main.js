@@ -287,20 +287,43 @@ document.addEventListener('alpine:init', () => {
 
             if (this.inputMethod === 'url') {
                 try {
-                    const response = await fetch(this.urlInput);
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
+                    // 分割多行 URL 并过滤空行
+                    const urls = this.urlInput.split('\n')
+                        .map(url => url.trim())
+                        .filter(url => url);
+
+                    // 并行下载所有文件
+                    const downloadPromises = urls.map(async url => {
+                        try {
+                            const response = await fetch(url);
+                            if (!response.ok) {
+                                throw new Error(`HTTP error! status: ${response.status}`);
+                            }
+                            const blob = await response.blob();
+                            const fileName = url.split('?')[0].split('/').pop() || 'downloaded.log';
+                            return new File([blob], fileName);
+                        } catch (error) {
+                            console.log(`Error fetching URL: ${url}`, error);
+                            const resultDiv = document.getElementById('result');
+                            resultDiv.innerHTML += `<div class="error">Error fetching URL ${url}: ${error.message}</div>`;
+                            return null;
+                        }
+                    });
+
+                    // 等待所有下载完成
+                    const files = (await Promise.all(downloadPromises))
+                        .filter(file => file !== null);  // 过滤掉下载失败的文件
+
+                    if (files.length > 0) {
+                        this.files = files;
+                        this.renderFromFileInput();
+                    } else {
+                        throw new Error('No files were successfully downloaded');
                     }
-                    const blob = await response.blob();
-                    const fileName = this.urlInput.split('?')[0].split('/').pop() || 'downloaded.log';
-                    const file = new File([blob], fileName);
-                    
-                    this.files = [file];
-                    this.renderFromFileInput();
                 } catch (error) {
-                    console.error('Error fetching URL:', error);
+                    console.log('Error processing URLs:', error);
                     const resultDiv = document.getElementById('result');
-                    resultDiv.innerHTML = `<div class="error">Error fetching URL: ${error.message}</div>`;
+                    resultDiv.innerHTML = `<div class="error">Error processing URLs: ${error.message}</div>`;
                 } finally {
                     this.isProcessing = false;
                 }

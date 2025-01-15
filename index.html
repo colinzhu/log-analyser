@@ -78,12 +78,12 @@
                         </label>
                     </header>
                     <div x-transition>
-                        <input type="url" id="urlInput" 
-                               placeholder="Enter log file URL..." 
+                        <textarea id="urlInput" rows="2"
+                               placeholder="Enter log file URLs (one per line)..." 
                                :value="urlInput"
                                @input="setUrlInput" 
-                               x-bind:disabled="isUrlInputDisabled"/>
-                        <small>URL of text, .gz, .zip files</small>
+                               x-bind:disabled="isUrlInputDisabled"></textarea>
+                        <small>URLs of text, .gz, .zip files</small>
                     </div>
                 </article>
             </div>
