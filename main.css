@@ -123,3 +123,6 @@
     background-color: #ffc !important;
 }
 
+#urlInput {
+    white-space: nowrap;
+}
