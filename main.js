@@ -333,7 +333,6 @@ document.addEventListener('alpine:init', () => {
                 console.log('Error processing URLs:', error);
                 const resultDiv = document.getElementById('result');
                 resultDiv.innerHTML += `<div class="error">Error processing URLs: ${error.message}</div>`;
-            } finally {
                 this.isProcessing = false;
             }
         },
