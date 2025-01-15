@@ -49,8 +49,8 @@
 .results-content #result {
     padding: 0.5rem 0rem;
     font-family: monospace;
-    font-size: 0.85rem;
-    line-height: 1.2;
+    font-size: 0.75rem;
+    line-height: 1.1;
 }
 
 .results-content #result div {
@@ -102,7 +102,7 @@
 
 /* 匹配行和上下文行样式 */
 .matched-line {
-    padding: 0.25rem 0.5rem !important;
+    padding: 0 0.5rem !important;
 }
 
 .matched-line:hover {
@@ -114,7 +114,8 @@
 }
 
 .context-line {
-    padding: 0.25rem 0.5rem !important;
+    padding: 0 0.5rem !important;
+    color: #888;
     background-color: #fff8e1;
 }
 
@@ -122,3 +123,6 @@
     background-color: #ffc !important;
 }
 
+#urlInput {
+    white-space: nowrap;
+}

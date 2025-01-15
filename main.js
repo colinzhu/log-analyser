@@ -44,6 +44,124 @@ document.addEventListener('alpine:init', () => {
         isProcessing: false,
         selectedLineId: null,
         urlInput: '',
+        isChromeExtension: false,
+
+        init() {
+            // 从 URL 参数中获取初始值
+            const params = new URLSearchParams(window.location.search);
+            const initialInputMethod = params.get('inputMethod');
+            const initialUrl = params.get('url');
+            const isChromeExtension = params.get('isChromeExtension');
+            if (initialInputMethod) {
+                this.inputMethod = initialInputMethod;
+            }
+            
+            if (initialUrl) {
+                this.urlInput = initialUrl;
+            }
+            
+            if (isChromeExtension) {
+                this.isChromeExtension = true;
+            }
+        },
+
+        // Setters
+        setInputMethod() {
+            this.inputMethod = this.$el.value;
+        },
+
+        setTextInput() {
+            this.textInput = this.$el.value;
+        },
+
+        setUrlInput() {
+            this.urlInput = this.$el.value;
+        },
+
+        setIncludeInput() {
+            this.includeInput = this.$el.value;
+        },
+
+        setIncludeInputCase() {
+            this.includeInputCase = this.$el.checked;
+        },
+
+        setExcludeInput() {
+            this.excludeInput = this.$el.value;
+        },
+
+        setExcludeInputCase() {
+            this.excludeInputCase = this.$el.checked;
+        },
+
+        setHideInput() {
+            this.hideInput = this.$el.value;
+        },
+
+        setHideInputCase() {
+            this.hideInputCase = this.$el.checked;
+        },
+
+        setOutputLimit() {
+            this.outputLimit = parseInt(this.$el.value);
+        },
+
+        setContextLimit() {
+            this.contextLimit = parseInt(this.$el.value);
+        },
+
+        // Computed properties
+        showProcessingButton() {
+            return this.isProcessing;
+        },
+
+        showResultActions() {
+            return this.resultLineCount > 0;
+        },
+
+        showResults() {
+            return this.resultLineCount > -1;
+        },
+
+        showSelectedFiles() {
+            return this.files.length > 1;
+        },
+
+        isSearchDisabled() {
+            return this.isProcessing || 
+                   (this.inputMethod === 'file' && !this.fileInput) || 
+                   (this.inputMethod === 'text' && !this.textInput) || 
+                   (this.inputMethod === 'url' && !this.urlInput);
+        },
+
+        getWrapStyle() {
+            return this.isWrap ? 'white-space: pre-wrap' : 'white-space: pre';
+        },
+
+        getWrapButtonText() {
+            return this.isWrap ? 'Nowrap' : 'Wrap';
+        },
+
+        isFileInputDisabled() {
+            return this.inputMethod !== 'file';
+        },
+
+        isTextInputDisabled() {
+            return this.inputMethod !== 'text';
+        },
+
+        isUrlInputDisabled() {
+            return this.inputMethod !== 'url';
+        },
+        isInputMethodChecked() {
+            return this.inputMethod === this.$el.value;
+        },
+        isOutputLimitSelected() {
+            return this.outputLimit === parseInt(this.$el.value);
+        },
+        isContextLimitSelected() {
+            return this.contextLimit === parseInt(this.$el.value);
+        },
 
         // Methods
         clearContextStore() {
@@ -114,8 +232,8 @@ document.addEventListener('alpine:init', () => {
                 if (data.fileName) {
                     matchedLine.title = `From: ${data.fileName}`;
                 }
-                // 重要：确保绑定点击事件
-                matchedLine.onclick = () => this.showContext(lineId);
+                // 重要：确保绑定双击事件
+                matchedLine.ondblclick = () => this.showContext(lineId);
                 fragment.appendChild(matchedLine);
 
                 // 添加后面的上下文行
@@ -141,12 +259,13 @@ document.addEventListener('alpine:init', () => {
         },
 
         reset() {
-            this.inputMethod = 'file';
+            this.inputMethod = this.isChromeExtension ? 'url' : 'file';
             this.textInput = '';
             this.urlInput = '';
             this.fileInput = null;
             this.clearResult();
             document.getElementById('fileInput').value = '';
+            this.files = [];
             this.shouldStop = false;
             this.resultLineCount = -1;
         },
@@ -168,24 +287,56 @@ document.addEventListener('alpine:init', () => {
             this.selectedLineId = null;
 
             if (this.inputMethod === 'url') {
-                try {
-                    const response = await fetch(this.urlInput);
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
-                    }
-                    this.textInput = await response.text();
-                    this.renderFromTextInput();
-                } catch (error) {
-                    console.error('Error fetching URL:', error);
-                    const resultDiv = document.getElementById('result');
-                    resultDiv.innerHTML = `<div class="error">Error fetching URL: ${error.message}</div>`;
-                    this.isProcessing = false;
-                }
+                this.renderFromUrlInput();
+            } else if (this.inputMethod === 'file') {
+                this.renderFromFileInput(this.files);
             } else {
-                this.inputMethod === 'file' ? this.renderFromFileInput() : this.renderFromTextInput();
+                this.renderFromTextInput();
             }
         },
 
+        async renderFromUrlInput() {
+            try {
+                // 分割多行 URL 并过滤空行
+                const urls = this.urlInput.split('\n')
+                    .map(url => url.trim())
+                    .filter(url => url);
+
+                // 并行下载所有文件
+                const downloadPromises = urls.map(async url => {
+                    try {
+                        const response = await fetch(url);
+                        if (!response.ok) {
+                            throw new Error(`HTTP error! status: ${response.status}`);
+                        }
+                        const blob = await response.blob();
+                        const fileName = url.split('?')[0].split('/').pop() || 'downloaded.log';
+                        return new File([blob], fileName);
+                    } catch (error) {
+                        console.log(`Error fetching URL: ${url}`, error);
+                        const resultDiv = document.getElementById('result');
+                        resultDiv.innerHTML += `<div class="error">Error fetching URL ${url}: ${error.message}</div>`;
+                        return null;
+                    }
+                });
+
+                // 等待所有下载完成
+                const files = (await Promise.all(downloadPromises))
+                    .filter(file => file !== null);  // 过滤掉下载失败的文件
+
+                if (files.length > 0) {
+                    this.renderFromFileInput(files);
+                } else {
+                    throw new Error('No files were successfully downloaded');
+                }
+            } catch (error) {
+                console.log('Error processing URLs:', error);
+                const resultDiv = document.getElementById('result');
+                resultDiv.innerHTML += `<div class="error">Error processing URLs: ${error.message}</div>`;
+                this.isProcessing = false;
+            }
+        },
+        
         renderFromTextInput() {
             const { includeRegexes, excludeRegexes, hideRegexes } = this.buildRegexes();
             const lines = this.textInput.split("\n");
@@ -245,7 +396,7 @@ document.addEventListener('alpine:init', () => {
                     lineDiv.textContent = processedLine;
                     lineDiv.className = 'matched-line';
                     lineDiv.dataset.lineId = lineId;
-                    lineDiv.onclick = () => this.showContext(lineId);
+                    lineDiv.ondblclick = () => this.showContext(lineId);
 
                     resultDiv.appendChild(lineDiv);
                     this.resultLineCount++;
@@ -293,16 +444,16 @@ document.addEventListener('alpine:init', () => {
             }
         },
 
-        renderFromFileInput() {
-            if (!this.files.length) return;
+        renderFromFileInput(files) {
+            if (!files.length) return;
             
             const processNextFile = (index) => {
-                if (index >= this.files.length || this.resultLineCount >= this.outputLimit) {
+                if (index >= files.length || this.resultLineCount >= this.outputLimit) {
                     this.isProcessing = false;
                     return;
                 }
 
-                const file = this.files[index];
+                const file = files[index];
                 const fileName = file.name.toLowerCase();
                 
                 const onComplete = () => {
@@ -376,7 +527,7 @@ document.addEventListener('alpine:init', () => {
 
                         try {
                             const blob = await entry.async('blob');
-                            const zipFile = new File([blob], entry.name, {type: 'file'});
+                            const zipFile = new File([blob], entry.name);
                             const fullName = `${file.name}/${entry.name}`;
                             
                             await new Promise((resolve) => {
@@ -500,7 +651,7 @@ document.addEventListener('alpine:init', () => {
                     }
 
                     lineDiv.dataset.lineId = lineId;
-                    lineDiv.onclick = () => this.showContext(lineId);
+                    lineDiv.ondblclick = () => this.showContext(lineId);
 
                     resultDiv.appendChild(lineDiv);
                     this.resultLineCount++;
@@ -524,18 +675,19 @@ document.addEventListener('alpine:init', () => {
                 lineDiv.title = `From: ${fileName}`;
             }
 
-            // 只有在需要上下文时才添加点击事件
+            // 只有在需要上下文时才添加双击事件
             if (this.contextLimit > 0) {
                 const lineId = this.resultLineCount + 1;
                 lineDiv.dataset.lineId = lineId;
-                lineDiv.onclick = () => this.showContext(lineId);
+                lineDiv.ondblclick = () => this.showContext(lineId);
             }
 
             resultDiv.appendChild(lineDiv);
             this.resultLineCount++;
         },
 
-        sortResult(direction) {
+        sortResult() {
+            const direction = this.$el.value;
             const resultDiv = document.getElementById('result');
             // 移除所有上下文行
             document.querySelectorAll('.context-line').forEach(el => el.remove());
@@ -570,7 +722,7 @@ document.addEventListener('alpine:init', () => {
                 }
                 if (line.lineId) {
                     lineDiv.dataset.lineId = line.lineId;
-                    lineDiv.onclick = () => this.showContext(line.lineId);
+                    lineDiv.ondblclick = () => this.showContext(line.lineId);
                 }
                 resultDiv.appendChild(lineDiv);
             });

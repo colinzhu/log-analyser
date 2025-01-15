@@ -4,18 +4,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=yes">
-    <title>Log Grep</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2.0.6/css/pico.min.css"/>
+    <title>Log Analyser</title>
+    <link rel="stylesheet" href="lib/pico.min.css"/>
     <link rel="stylesheet" href="main.css"/>
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.5/dist/cdn.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/pako@2.0.4/dist/pako.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/jszip@3.7.1/dist/jszip.min.js"></script>
+    <script src="lib/alpinejs-csp.cdn.min.js" defer></script>
+    <script src="lib/pako.min.js"></script>
+    <script src="lib/jszip.min.js"></script>
     <script src="main.js"></script>
 </head>
 
 <body x-data="appData">
     <div class="container-fluid">
-            <h1 style="margin-bottom:0">Log Grep</h1>
+            <h1 style="margin-bottom:0">Log Analyser</h1>
             <small style="color: #666;margin-left: 2px;">Files are processed locally, no data is sent to the server.</small>
     </div>
 
@@ -26,14 +26,16 @@
                 <article>
                     <header>
                         <label style="margin-bottom:0">
-                            <input type="radio" name="inputMethod" value="file" x-model="inputMethod" checked/>
-                            File Input
+                            <input type="radio" name="inputMethod" value="file" 
+                                   :checked="isInputMethodChecked"
+                                   @change="setInputMethod" />
+                            File
                         </label>
                     </header>
                     <div x-transition>
                         <input type="file" id="fileInput" @change="onFileChanged" multiple
-                               accept=".txt,.log,.gz,.zip" x-bind:disabled="inputMethod === 'text'"/>
-                        <div x-show="files.length > 1" class="selected-files">
+                               accept=".txt,.log,.gz,.zip" x-bind:disabled="isFileInputDisabled"/>
+                        <div x-show="showSelectedFiles" class="selected-files">
                             <small>Selected files:</small>
                             <ul>
                                 <template x-for="file in files" :key="file.name">
@@ -50,32 +52,37 @@
                 <article>
                     <header>
                         <label style="margin-bottom:0">
-                            <input type="radio" name="inputMethod" value="text" x-model="inputMethod"/>
-                            Text Input
+                            <input type="radio" name="inputMethod" value="text" 
+                                   :checked="isInputMethodChecked"
+                                   @change="setInputMethod"/>
+                            Text
                         </label>
                     </header>
                     <div x-transition>
                         <textarea id="textInput" rows="2" 
                                  placeholder="Paste your text/log here..." 
-                                 x-model="textInput" x-bind:disabled="inputMethod === 'file'"></textarea>
+                                 :value="textInput"
+                                 @input="setTextInput" x-bind:disabled="isTextInputDisabled"></textarea>
                     </div>
                 </article>
             </div>
 
-            <div>
+            <div x-show="isChromeExtension">
                 <article>
                     <header>
                         <label style="margin-bottom:0">
-                            <input type="radio" name="inputMethod" value="url" x-model="inputMethod"/>
-                            URL Input
+                            <input type="radio" name="inputMethod" value="url" 
+                                   :checked="isInputMethodChecked"
+                                   @change="setInputMethod"/>
+                            URL <span style="color: #888;font-size: 0.8em;">(supports multiple URLs of text, .gz, .zip files)</span>
                         </label>
                     </header>
                     <div x-transition>
-                        <input type="url" id="urlInput" 
-                               placeholder="Enter log file URL..." 
-                               x-model="urlInput" 
-                               x-bind:disabled="inputMethod !== 'url'"/>
-                        <small>Direct link to plain text log file</small>
+                        <textarea id="urlInput" rows="2"
+                               placeholder="Enter log file URLs (one per line)..." 
+                               :value="urlInput"
+                               @input="setUrlInput" 
+                               x-bind:disabled="isUrlInputDisabled"></textarea>
                     </div>
                 </article>
             </div>
@@ -90,48 +97,63 @@
                 <div>
                     <label for="includeInput">
                         Include Keywords 
-                        <small>case-insensitive <input type="checkbox" x-model="includeInputCase"/></small>
+                        <small>case-insensitive <input type="checkbox" 
+                                                      :checked="includeInputCase"
+                                                      @change="setIncludeInputCase"/></small>
                     </label>
-                    <input id="includeInput" placeholder="Keywords to include, separated by space" x-model="includeInput"/>
+                    <input id="includeInput" 
+                           placeholder="Keywords to include, separated by space" 
+                           :value="includeInput"
+                           @input="setIncludeInput"/>
                 </div>
 
                 <div>
                     <label for="excludeInput">
                         Exclude Keywords 
-                        <small>case-insensitive <input type="checkbox" x-model="excludeInputCase"/></small>
+                        <small>case-insensitive <input type="checkbox" 
+                                                      :checked="excludeInputCase"
+                                                      @change="setExcludeInputCase"/></small>
                     </label>
-                    <input id="excludeInput" placeholder="Keywords to exclude, separated by space" x-model="excludeInput"/>
+                    <input id="excludeInput" 
+                           placeholder="Keywords to exclude, separated by space" 
+                           :value="excludeInput"
+                           @input="setExcludeInput"/>
                 </div>
 
                 <div>
                     <label for="hideInput">
                         Hide Text 
-                        <small>case-insensitive <input type="checkbox" x-model="hideInputCase"/></small>
+                        <small>case-insensitive <input type="checkbox" 
+                                                      :checked="hideInputCase"
+                                                      @change="setHideInputCase"/></small>
                     </label>
-                    <input id="hideInput" placeholder="Text to hide, separated by space" x-model="hideInput"/>
+                    <input id="hideInput" 
+                           placeholder="Text to hide, separated by space" 
+                           :value="hideInput"
+                           @input="setHideInput"/>
                 </div>
 
                 <div>
                     <label for="outputLimit">Output Limit</label>
-                    <select id="outputLimit" x-model="outputLimit">
-                        <option value="10000">10,000 lines</option>
-                        <option value="1000">1,000 lines</option>
-                        <option value="100">100 lines</option>
-                        <option value="50">50 lines</option>
-                        <option value="10">10 lines</option>
-                        <option value="999999999">No limit</option>
+                    <select id="outputLimit" @change="setOutputLimit">
+                        <option value="10000" :selected="isOutputLimitSelected">10,000 lines</option>
+                        <option value="1000" :selected="isOutputLimitSelected">1,000 lines</option>
+                        <option value="100" :selected="isOutputLimitSelected">100 lines</option>
+                        <option value="50" :selected="isOutputLimitSelected">50 lines</option>
+                        <option value="10" :selected="isOutputLimitSelected">10 lines</option>
+                        <option value="999999999" :selected="isOutputLimitSelected">No limit</option>
                     </select>
                 </div>
 
                 <div>
-                    <label for="contextLimit">Context</label>
-                    <select id="contextLimit" x-model="contextLimit">
-                        <option value="500">500 lines</option>
-                        <option value="200">200 lines</option>
-                        <option value="100">100 lines</option>
-                        <option value="50">50 lines</option>
-                        <option value="10">10 lines</option>
-                        <option value="0">No context</option>
+                    <label for="contextLimit">Context <small>(double click in result to show context)</small></label>
+                    <select id="contextLimit" @change="setContextLimit">
+                        <option value="500" :selected="isContextLimitSelected">500 lines</option>
+                        <option value="200" :selected="isContextLimitSelected">200 lines</option>
+                        <option value="100" :selected="isContextLimitSelected">100 lines</option>
+                        <option value="50" :selected="isContextLimitSelected">50 lines</option>
+                        <option value="10" :selected="isContextLimitSelected">10 lines</option>
+                        <option value="0" :selected="isContextLimitSelected">No context</option>
                     </select>
                 </div>
             </div>
@@ -142,19 +164,19 @@
             <div>
                 <div class="button-group">
                     <button class="primary" @click="renderResult" 
-                            x-bind:aria-busy="isProcessing" 
-                            x-bind:disabled="isProcessing || (inputMethod === 'file' && !fileInput) || (inputMethod === 'text' && !textInput) || (inputMethod === 'url' && !urlInput)">
+                            x-bind:aria-busy="showProcessingButton" 
+                            x-bind:disabled="isSearchDisabled">
                         Search
                     </button>
                     <button class="secondary" 
                             @click="stopProcessing"
-                            x-show="isProcessing">
+                            x-show="showProcessingButton">
                         Stop
                     </button>
                     <button class="secondary outline" @click="reset">Reset</button>
                 </div>
             </div>
-            <div x-show="resultLineCount > 0" class="actions-right">
+            <div x-show="showResultActions" class="actions-right">
                 <div class="button-group">
                     <button class="secondary outline" @click="copyToInput">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
@@ -169,13 +191,13 @@
                         </svg>
                         Save
                     </button>
-                    <button class="secondary outline" @click="sortResult('asc')">
+                    <button class="secondary outline" @click="sortResult" value="asc">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
                             <path d="M3.5 3.5a.5.5 0 0 0-1 0v8.793l-1.146-1.147a.5.5 0 0 0-.708.708l2 1.999.007.007a.497.497 0 0 0 .7-.006l2-2a.5.5 0 0 0-.707-.708L3.5 12.293V3.5zm4 .5a.5.5 0 0 1 0-1h1a.5.5 0 0 1 0 1h-1zm0 3a.5.5 0 0 1 0-1h3a.5.5 0 0 1 0 1h-3zm0 3a.5.5 0 0 1 0-1h5a.5.5 0 0 1 0 1h-5zM7 12.5a.5.5 0 0 0 .5.5h7a.5.5 0 0 0 0-1h-7a.5.5 0 0 0-.5.5z"/>
                         </svg>
                         Sort A-Z
                     </button>
-                    <button class="secondary outline" @click="sortResult('desc')">
+                    <button class="secondary outline" @click="sortResult" value="desc">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
                             <path d="M3.5 12.5a.5.5 0 0 1-1 0V3.707L1.354 4.854a.5.5 0 1 1-.708-.708l2-1.999.007-.007a.498.498 0 0 1 .7.006l2 2a.5.5 0 1 1-.707.708L3.5 3.707V12.5zm3.5-9a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1h-7a.5.5 0 0 1-.5-.5zM7.5 6a.5.5 0 0 0 0 1h5a.5.5 0 0 0 0-1h-5zm0 3a.5.5 0 0 0 0 1h3a.5.5 0 0 0 0-1h-3zm0 3a.5.5 0 0 0 0 1h1a.5.5 0 0 0 0-1h-1z"/>
                         </svg>
@@ -185,14 +207,14 @@
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
                             <path d="M2.5 1A1.5 1.5 0 0 0 1 2.5v11A1.5 1.5 0 0 0 2.5 15h6.086a1.5 1.5 0 0 0 1.06-.44l4.915-4.914A1.5 1.5 0 0 0 15 8.586V2.5A1.5 1.5 0 0 0 13.5 1h-11zM2 2.5a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 .5.5V8H9.5A1.5 1.5 0 0 0 8 9.5V14H2.5a.5.5 0 0 1-.5-.5v-11zm7 11.293V9.5a.5.5 0 0 1 .5-.5h4.293L9 13.793z"/>
                         </svg>
-                        <span x-text="isWrap ? 'Nowrap' : 'Wrap'"></span>
+                        <span x-text="getWrapButtonText"></span>
                     </button>
                 </div>
             </div>
         </div>
 
         <!-- Results -->
-        <article x-show="resultLineCount > -1" class="results">
+        <article x-show="showResults" class="results">
             <div class="results-content">
                 <div class="results-header">
                     <h4>Results</h4>
@@ -200,7 +222,7 @@
                         Total lines: <strong x-text="resultLineCount"></strong>
                     </div>
                 </div>
-                <div id="result" x-bind:style="isWrap ? 'white-space: normal' : 'white-space: nowrap'"></div>
+                <div id="result" x-bind:style="getWrapStyle"></div>
             </div>
         </article>
     </main>
