@@ -45,6 +45,21 @@ document.addEventListener('alpine:init', () => {
         selectedLineId: null,
         urlInput: '',
 
+        init() {
+            // 从 URL 参数中获取初始值
+            const params = new URLSearchParams(window.location.search);
+            const initialInputMethod = params.get('inputMethod');
+            const initialUrl = params.get('url');
+            
+            if (initialInputMethod) {
+                this.inputMethod = initialInputMethod;
+            }
+            
+            if (initialUrl) {
+                this.urlInput = initialUrl;
+            }
+        },
+
         // Setters
         setInputMethod() {
             this.inputMethod = this.$el.value;
