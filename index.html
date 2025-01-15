@@ -29,7 +29,7 @@
                             <input type="radio" name="inputMethod" value="file" 
                                    :checked="isInputMethodChecked"
                                    @change="setInputMethod" />
-                            File Input
+                            File
                         </label>
                     </header>
                     <div x-transition>
@@ -55,7 +55,7 @@
                             <input type="radio" name="inputMethod" value="text" 
                                    :checked="isInputMethodChecked"
                                    @change="setInputMethod"/>
-                            Text Input
+                            Text
                         </label>
                     </header>
                     <div x-transition>
@@ -74,7 +74,7 @@
                             <input type="radio" name="inputMethod" value="url" 
                                    :checked="isInputMethodChecked"
                                    @change="setInputMethod"/>
-                            URL Input
+                            URL <span style="color: #888;font-size: 0.8em;">(supports multiple URLs of text, .gz, .zip files)</span>
                         </label>
                     </header>
                     <div x-transition>
@@ -83,7 +83,6 @@
                                :value="urlInput"
                                @input="setUrlInput" 
                                x-bind:disabled="isUrlInputDisabled"></textarea>
-                        <small>URLs of text, .gz, .zip files</small>
                     </div>
                 </article>
             </div>
