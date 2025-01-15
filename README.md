@@ -1,4 +1,4 @@
-# Log Grep
+# Log Analyser
 
 A web-based log file analysis tool that allows you to search, filter, and analyze log files directly in your browser.
 

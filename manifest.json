@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "Log Grep",
+  "name": "Log Analyser",
   "version": "1.0",
   "description": "A powerful log file analysis tool",
   "permissions": [
@@ -8,7 +8,7 @@
     "scripting"
   ],
   "action": {
-    "default_title": "Log Grep"
+    "default_title": "Log Analyser"
   },
   "web_accessible_resources": [{
     "resources": [
