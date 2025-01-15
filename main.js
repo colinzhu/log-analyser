@@ -136,6 +136,12 @@ document.addEventListener('alpine:init', () => {
         isInputMethodChecked() {
             return this.inputMethod === this.$el.value;
         },
+        isOutputLimitSelected() {
+            return this.outputLimit === parseInt(this.$el.value);
+        },
+        isContextLimitSelected() {
+            return this.contextLimit === parseInt(this.$el.value);
+        },
 
         // Methods
         clearContextStore() {
@@ -627,7 +633,8 @@ document.addEventListener('alpine:init', () => {
             this.resultLineCount++;
         },
 
-        sortResult(direction) {
+        sortResult() {
+            const direction = this.$el.value;
             const resultDiv = document.getElementById('result');
             // 移除所有上下文行
             document.querySelectorAll('.context-line').forEach(el => el.remove());

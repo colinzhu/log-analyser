@@ -61,7 +61,7 @@
                     <div x-transition>
                         <textarea id="textInput" rows="2" 
                                  placeholder="Paste your text/log here..." 
-                                 x-model="textInput"
+                                 :value="textInput"
                                  @input="setTextInput" x-bind:disabled="isTextInputDisabled"></textarea>
                     </div>
                 </article>
@@ -80,7 +80,7 @@
                     <div x-transition>
                         <input type="url" id="urlInput" 
                                placeholder="Enter log file URL..." 
-                               x-model="urlInput"
+                               :value="urlInput"
                                @input="setUrlInput" 
                                x-bind:disabled="isUrlInputDisabled"/>
                         <small>Direct link to plain text log file</small>
@@ -99,12 +99,12 @@
                     <label for="includeInput">
                         Include Keywords 
                         <small>case-insensitive <input type="checkbox" 
-                                                      x-model="includeInputCase"
+                                                      :checked="includeInputCase"
                                                       @change="setIncludeInputCase"/></small>
                     </label>
                     <input id="includeInput" 
                            placeholder="Keywords to include, separated by space" 
-                           x-model="includeInput"
+                           :value="includeInput"
                            @input="setIncludeInput"/>
                 </div>
 
@@ -112,12 +112,12 @@
                     <label for="excludeInput">
                         Exclude Keywords 
                         <small>case-insensitive <input type="checkbox" 
-                                                      x-model="excludeInputCase"
+                                                      :checked="excludeInputCase"
                                                       @change="setExcludeInputCase"/></small>
                     </label>
                     <input id="excludeInput" 
                            placeholder="Keywords to exclude, separated by space" 
-                           x-model="excludeInput"
+                           :value="excludeInput"
                            @input="setExcludeInput"/>
                 </div>
 
@@ -125,40 +125,36 @@
                     <label for="hideInput">
                         Hide Text 
                         <small>case-insensitive <input type="checkbox" 
-                                                      x-model="hideInputCase"
+                                                      :checked="hideInputCase"
                                                       @change="setHideInputCase"/></small>
                     </label>
                     <input id="hideInput" 
                            placeholder="Text to hide, separated by space" 
-                           x-model="hideInput"
+                           :value="hideInput"
                            @input="setHideInput"/>
                 </div>
 
                 <div>
                     <label for="outputLimit">Output Limit</label>
-                    <select id="outputLimit" 
-                            x-model="outputLimit"
-                            @change="setOutputLimit">
-                        <option value="10000">10,000 lines</option>
-                        <option value="1000">1,000 lines</option>
-                        <option value="100">100 lines</option>
-                        <option value="50">50 lines</option>
-                        <option value="10">10 lines</option>
-                        <option value="999999999">No limit</option>
+                    <select id="outputLimit" @change="setOutputLimit">
+                        <option value="10000" :selected="isOutputLimitSelected">10,000 lines</option>
+                        <option value="1000" :selected="isOutputLimitSelected">1,000 lines</option>
+                        <option value="100" :selected="isOutputLimitSelected">100 lines</option>
+                        <option value="50" :selected="isOutputLimitSelected">50 lines</option>
+                        <option value="10" :selected="isOutputLimitSelected">10 lines</option>
+                        <option value="999999999" :selected="isOutputLimitSelected">No limit</option>
                     </select>
                 </div>
 
                 <div>
-                    <label for="contextLimit">Context <small>(double click a line in result to show context)</small></label>
-                    <select id="contextLimit" 
-                            x-model="contextLimit"
-                            @change="setContextLimit">
-                        <option value="500">500 lines</option>
-                        <option value="200">200 lines</option>
-                        <option value="100">100 lines</option>
-                        <option value="50">50 lines</option>
-                        <option value="10">10 lines</option>
-                        <option value="0">No context</option>
+                    <label for="contextLimit">Context <small>(double click in result to show context)</small></label>
+                    <select id="contextLimit" @change="setContextLimit">
+                        <option value="500" :selected="isContextLimitSelected">500 lines</option>
+                        <option value="200" :selected="isContextLimitSelected">200 lines</option>
+                        <option value="100" :selected="isContextLimitSelected">100 lines</option>
+                        <option value="50" :selected="isContextLimitSelected">50 lines</option>
+                        <option value="10" :selected="isContextLimitSelected">10 lines</option>
+                        <option value="0" :selected="isContextLimitSelected">No context</option>
                     </select>
                 </div>
             </div>
@@ -196,13 +192,13 @@
                         </svg>
                         Save
                     </button>
-                    <button class="secondary outline" @click="sortResult('asc')">
+                    <button class="secondary outline" @click="sortResult" value="asc">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
                             <path d="M3.5 3.5a.5.5 0 0 0-1 0v8.793l-1.146-1.147a.5.5 0 0 0-.708.708l2 1.999.007.007a.497.497 0 0 0 .7-.006l2-2a.5.5 0 0 0-.707-.708L3.5 12.293V3.5zm4 .5a.5.5 0 0 1 0-1h1a.5.5 0 0 1 0 1h-1zm0 3a.5.5 0 0 1 0-1h3a.5.5 0 0 1 0 1h-3zm0 3a.5.5 0 0 1 0-1h5a.5.5 0 0 1 0 1h-5zM7 12.5a.5.5 0 0 0 .5.5h7a.5.5 0 0 0 0-1h-7a.5.5 0 0 0-.5.5z"/>
                         </svg>
                         Sort A-Z
                     </button>
-                    <button class="secondary outline" @click="sortResult('desc')">
+                    <button class="secondary outline" @click="sortResult" value="desc">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
                             <path d="M3.5 12.5a.5.5 0 0 1-1 0V3.707L1.354 4.854a.5.5 0 1 1-.708-.708l2-1.999.007-.007a.498.498 0 0 1 .7.006l2 2a.5.5 0 1 1-.707.708L3.5 3.707V12.5zm3.5-9a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1h-7a.5.5 0 0 1-.5-.5zM7.5 6a.5.5 0 0 0 0 1h5a.5.5 0 0 0 0-1h-5zm0 3a.5.5 0 0 0 0 1h3a.5.5 0 0 0 0-1h-3zm0 3a.5.5 0 0 0 0 1h1a.5.5 0 0 0 0-1h-1z"/>
                         </svg>
