@@ -145,14 +145,27 @@ document.addEventListener('alpine:init', () => {
         isFileInputDisabled() {
             return this.inputMethod !== 'file';
         },
-
         isTextInputDisabled() {
             return this.inputMethod !== 'text';
         },
-
         isUrlInputDisabled() {
             return this.inputMethod !== 'url';
         },
+        
+        isFileInputEnabled() {
+            return this.inputMethod === 'file';
+        },
+        isUrlInputEnabled() {
+            return this.inputMethod === 'url';
+        },
+        isTextInputEnabled() {
+            return this.inputMethod === 'text';
+        },
+
+        getTextInputSectionCss() {
+            return this.inputMethod === 'text' ? 'width:20%' : 'width:80%';
+        },
+        
         isInputMethodChecked() {
             return this.inputMethod === this.$el.value;
         },

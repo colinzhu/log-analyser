@@ -2,6 +2,9 @@
 
 A web-based log file analysis tool that allows you to search, filter, and analyze log files directly in your browser. Also available as a Chrome extension.
 
+![image](https://github.com/colinzhu/resources/blob/master/log-analyser/screenshot-1.png?raw=true)
+
+
 ## Features
 
 - **Multiple Input Methods**

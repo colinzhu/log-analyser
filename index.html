@@ -14,217 +14,224 @@
 </head>
 
 <body x-data="appData">
-    <div class="container-fluid">
-            <h1 style="margin-bottom:0">Log Analyser</h1>
-            <small style="color: #666;margin-left: 2px;">Files are processed locally, no data is sent to the server.</small>
+<div class="container-fluid">
+    <h1 style="margin-bottom:0">Log Analyser</h1>
+    <small style="color: #666;margin-left: 2px;">Files are processed locally, no data is sent to the server.</small>
+</div>
+
+<main class="container-fluid">
+    <!-- Input Method Selection -->
+
+    <div>
+        <article style="padding-bottom:0;padding-top:5px">
+            <header>
+                <label style="margin-bottom:0">
+                    <input type="radio" name="inputMethod" value="file"
+                           :checked="isInputMethodChecked"
+                           @change="setInputMethod"/>
+                    File
+                </label>
+            </header>
+            <div x-transition x-show="isFileInputEnabled" style="padding-bottom: 0.25em">
+                <input type="file" id="fileInput" @change="onFileChanged" multiple
+                       accept=".txt,.log,.gz,.zip" x-bind:disabled="isFileInputDisabled"/>
+                <div x-show="showSelectedFiles" class="selected-files">
+                    <small>Selected files:</small>
+                    <ul>
+                        <template x-for="file in files" :key="file.name">
+                            <li x-text="file.name"></li>
+                        </template>
+                    </ul>
+                </div>
+                <small>Supports multiple files: Plain text, .gz, .zip files</small>
+            </div>
+        </article>
     </div>
 
-    <main class="container-fluid">
-        <!-- Input Method Selection -->
+    <div>
+        <article style="padding-bottom:0;padding-top:5px">
+            <header>
+                <label style="margin-bottom:0">
+                    <input type="radio" name="inputMethod" value="text"
+                           :checked="isInputMethodChecked"
+                           @change="setInputMethod"/>
+                    Text
+                </label>
+            </header>
+            <div x-transition x-show="isTextInputEnabled" style="padding-bottom: 0.25em">
+                        <textarea id="textInput" rows="2"
+                                  placeholder="Paste your text/log here..."
+                                  :value="textInput"
+                                  @input="setTextInput" x-bind:disabled="isTextInputDisabled"></textarea>
+            </div>
+        </article>
+    </div>
+
+
+    <div x-show="isChromeExtension">
+        <article style="padding-bottom:0;padding-top:5px">
+            <header>
+                <label style="margin-bottom:0">
+                    <input type="radio" name="inputMethod" value="url"
+                           :checked="isInputMethodChecked"
+                           @change="setInputMethod"/>
+                    URL <span
+                        style="color: #888;font-size: 0.8em;">(supports multiple URLs of text, .gz, .zip files)</span>
+                </label>
+            </header>
+            <div x-transition x-show="isUrlInputEnabled" style="padding-bottom: 0.25em">
+                    <textarea id="urlInput" rows="2"
+                              placeholder="Enter log file URLs (one per line)..."
+                              :value="urlInput"
+                              @input="setUrlInput"
+                              x-bind:disabled="isUrlInputDisabled"></textarea>
+            </div>
+        </article>
+    </div>
+
+
+    <!-- Filter Options -->
+    <article>
+        <header>
+            <span style="margin-bottom:0">Filter Options</span>
+        </header>
         <div class="grid">
             <div>
-                <article>
-                    <header>
-                        <label style="margin-bottom:0">
-                            <input type="radio" name="inputMethod" value="file" 
-                                   :checked="isInputMethodChecked"
-                                   @change="setInputMethod" />
-                            File
-                        </label>
-                    </header>
-                    <div x-transition>
-                        <input type="file" id="fileInput" @change="onFileChanged" multiple
-                               accept=".txt,.log,.gz,.zip" x-bind:disabled="isFileInputDisabled"/>
-                        <div x-show="showSelectedFiles" class="selected-files">
-                            <small>Selected files:</small>
-                            <ul>
-                                <template x-for="file in files" :key="file.name">
-                                    <li x-text="file.name"></li>
-                                </template>
-                            </ul>
-                        </div>
-                        <small>Supports multiple files: Plain text, .gz, .zip files</small>
-                    </div>
-                </article>
+                <label for="includeInput">
+                    Include Keywords
+                    <small>case-insensitive <input type="checkbox"
+                                                   :checked="includeInputCase"
+                                                   @change="setIncludeInputCase"/></small>
+                </label>
+                <input id="includeInput"
+                       placeholder="Keywords to include, separated by space"
+                       :value="includeInput"
+                       @input="setIncludeInput"/>
             </div>
 
             <div>
-                <article>
-                    <header>
-                        <label style="margin-bottom:0">
-                            <input type="radio" name="inputMethod" value="text" 
-                                   :checked="isInputMethodChecked"
-                                   @change="setInputMethod"/>
-                            Text
-                        </label>
-                    </header>
-                    <div x-transition>
-                        <textarea id="textInput" rows="2" 
-                                 placeholder="Paste your text/log here..." 
-                                 :value="textInput"
-                                 @input="setTextInput" x-bind:disabled="isTextInputDisabled"></textarea>
-                    </div>
-                </article>
+                <label for="excludeInput">
+                    Exclude Keywords
+                    <small>case-insensitive <input type="checkbox"
+                                                   :checked="excludeInputCase"
+                                                   @change="setExcludeInputCase"/></small>
+                </label>
+                <input id="excludeInput"
+                       placeholder="Keywords to exclude, separated by space"
+                       :value="excludeInput"
+                       @input="setExcludeInput"/>
             </div>
 
-            <div x-show="isChromeExtension">
-                <article>
-                    <header>
-                        <label style="margin-bottom:0">
-                            <input type="radio" name="inputMethod" value="url" 
-                                   :checked="isInputMethodChecked"
-                                   @change="setInputMethod"/>
-                            URL <span style="color: #888;font-size: 0.8em;">(supports multiple URLs of text, .gz, .zip files)</span>
-                        </label>
-                    </header>
-                    <div x-transition>
-                        <textarea id="urlInput" rows="2"
-                               placeholder="Enter log file URLs (one per line)..." 
-                               :value="urlInput"
-                               @input="setUrlInput" 
-                               x-bind:disabled="isUrlInputDisabled"></textarea>
-                    </div>
-                </article>
-            </div>
-        </div>
-
-        <!-- Filter Options -->
-        <article>
-            <header>
-                <span style="margin-bottom:0">Filter Options</span>
-            </header>
-            <div class="grid">
-                <div>
-                    <label for="includeInput">
-                        Include Keywords 
-                        <small>case-insensitive <input type="checkbox" 
-                                                      :checked="includeInputCase"
-                                                      @change="setIncludeInputCase"/></small>
-                    </label>
-                    <input id="includeInput" 
-                           placeholder="Keywords to include, separated by space" 
-                           :value="includeInput"
-                           @input="setIncludeInput"/>
-                </div>
-
-                <div>
-                    <label for="excludeInput">
-                        Exclude Keywords 
-                        <small>case-insensitive <input type="checkbox" 
-                                                      :checked="excludeInputCase"
-                                                      @change="setExcludeInputCase"/></small>
-                    </label>
-                    <input id="excludeInput" 
-                           placeholder="Keywords to exclude, separated by space" 
-                           :value="excludeInput"
-                           @input="setExcludeInput"/>
-                </div>
-
-                <div>
-                    <label for="hideInput">
-                        Hide Text 
-                        <small>case-insensitive <input type="checkbox" 
-                                                      :checked="hideInputCase"
-                                                      @change="setHideInputCase"/></small>
-                    </label>
-                    <input id="hideInput" 
-                           placeholder="Text to hide, separated by space" 
-                           :value="hideInput"
-                           @input="setHideInput"/>
-                </div>
-
-                <div>
-                    <label for="outputLimit">Output Limit</label>
-                    <select id="outputLimit" @change="setOutputLimit">
-                        <option value="10000" :selected="isOutputLimitSelected">10,000 lines</option>
-                        <option value="1000" :selected="isOutputLimitSelected">1,000 lines</option>
-                        <option value="100" :selected="isOutputLimitSelected">100 lines</option>
-                        <option value="50" :selected="isOutputLimitSelected">50 lines</option>
-                        <option value="10" :selected="isOutputLimitSelected">10 lines</option>
-                        <option value="999999999" :selected="isOutputLimitSelected">No limit</option>
-                    </select>
-                </div>
-
-                <div>
-                    <label for="contextLimit">Context <small>(double click in result to show context)</small></label>
-                    <select id="contextLimit" @change="setContextLimit">
-                        <option value="500" :selected="isContextLimitSelected">500 lines</option>
-                        <option value="200" :selected="isContextLimitSelected">200 lines</option>
-                        <option value="100" :selected="isContextLimitSelected">100 lines</option>
-                        <option value="50" :selected="isContextLimitSelected">50 lines</option>
-                        <option value="10" :selected="isContextLimitSelected">10 lines</option>
-                        <option value="0" :selected="isContextLimitSelected">No context</option>
-                    </select>
-                </div>
-            </div>
-        </article>
-
-        <!-- Actions -->
-        <div class="actions-grid">
             <div>
-                <div class="button-group">
-                    <button class="primary" @click="renderResult" 
-                            x-bind:aria-busy="showProcessingButton" 
-                            x-bind:disabled="isSearchDisabled">
-                        Search
-                    </button>
-                    <button class="secondary" 
-                            @click="stopProcessing"
-                            x-show="showProcessingButton">
-                        Stop
-                    </button>
-                    <button class="secondary outline" @click="reset">Reset</button>
-                </div>
+                <label for="hideInput">
+                    Hide Text
+                    <small>case-insensitive <input type="checkbox"
+                                                   :checked="hideInputCase"
+                                                   @change="setHideInputCase"/></small>
+                </label>
+                <input id="hideInput"
+                       placeholder="Text to hide, separated by space"
+                       :value="hideInput"
+                       @input="setHideInput"/>
             </div>
-            <div x-show="showResultActions" class="actions-right">
-                <div class="button-group">
-                    <button class="secondary outline" @click="copyToInput">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-                            <path d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z"/>
-                            <path d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zm-3-1A1.5 1.5 0 0 0 5 1.5v1A1.5 1.5 0 0 0 6.5 4h3A1.5 1.5 0 0 0 11 2.5v-1A1.5 1.5 0 0 0 9.5 0h-3z"/>
-                        </svg>
-                        Copy to Input
-                    </button>
-                    <button class="secondary outline" @click="saveResult">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-                            <path d="M8.5 1.5A1.5 1.5 0 0 1 10 0h4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2h6c-.314.418-.5.937-.5 1.5v6h-2a.5.5 0 0 0-.354.854l2.5 2.5a.5.5 0 0 0 .708 0l2.5-2.5A.5.5 0 0 0 10.5 7.5h-2v-6z"/>
-                        </svg>
-                        Save
-                    </button>
-                    <button class="secondary outline" @click="sortResult" value="asc">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-                            <path d="M3.5 3.5a.5.5 0 0 0-1 0v8.793l-1.146-1.147a.5.5 0 0 0-.708.708l2 1.999.007.007a.497.497 0 0 0 .7-.006l2-2a.5.5 0 0 0-.707-.708L3.5 12.293V3.5zm4 .5a.5.5 0 0 1 0-1h1a.5.5 0 0 1 0 1h-1zm0 3a.5.5 0 0 1 0-1h3a.5.5 0 0 1 0 1h-3zm0 3a.5.5 0 0 1 0-1h5a.5.5 0 0 1 0 1h-5zM7 12.5a.5.5 0 0 0 .5.5h7a.5.5 0 0 0 0-1h-7a.5.5 0 0 0-.5.5z"/>
-                        </svg>
-                        Sort A-Z
-                    </button>
-                    <button class="secondary outline" @click="sortResult" value="desc">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-                            <path d="M3.5 12.5a.5.5 0 0 1-1 0V3.707L1.354 4.854a.5.5 0 1 1-.708-.708l2-1.999.007-.007a.498.498 0 0 1 .7.006l2 2a.5.5 0 1 1-.707.708L3.5 3.707V12.5zm3.5-9a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1h-7a.5.5 0 0 1-.5-.5zM7.5 6a.5.5 0 0 0 0 1h5a.5.5 0 0 0 0-1h-5zm0 3a.5.5 0 0 0 0 1h3a.5.5 0 0 0 0-1h-3zm0 3a.5.5 0 0 0 0 1h1a.5.5 0 0 0 0-1h-1z"/>
-                        </svg>
-                        Sort Z-A
-                    </button>
-                    <button class="secondary outline" @click="toggleWrap">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-                            <path d="M2.5 1A1.5 1.5 0 0 0 1 2.5v11A1.5 1.5 0 0 0 2.5 15h6.086a1.5 1.5 0 0 0 1.06-.44l4.915-4.914A1.5 1.5 0 0 0 15 8.586V2.5A1.5 1.5 0 0 0 13.5 1h-11zM2 2.5a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 .5.5V8H9.5A1.5 1.5 0 0 0 8 9.5V14H2.5a.5.5 0 0 1-.5-.5v-11zm7 11.293V9.5a.5.5 0 0 1 .5-.5h4.293L9 13.793z"/>
-                        </svg>
-                        <span x-text="getWrapButtonText"></span>
-                    </button>
-                </div>
+
+            <div>
+                <label for="outputLimit">Output Limit</label>
+                <select id="outputLimit" @change="setOutputLimit">
+                    <option value="10000" :selected="isOutputLimitSelected">10,000 lines</option>
+                    <option value="1000" :selected="isOutputLimitSelected">1,000 lines</option>
+                    <option value="100" :selected="isOutputLimitSelected">100 lines</option>
+                    <option value="50" :selected="isOutputLimitSelected">50 lines</option>
+                    <option value="10" :selected="isOutputLimitSelected">10 lines</option>
+                    <option value="999999999" :selected="isOutputLimitSelected">No limit</option>
+                </select>
+            </div>
+
+            <div>
+                <label for="contextLimit">Context <small>(double click in result to show context)</small></label>
+                <select id="contextLimit" @change="setContextLimit">
+                    <option value="500" :selected="isContextLimitSelected">500 lines</option>
+                    <option value="200" :selected="isContextLimitSelected">200 lines</option>
+                    <option value="100" :selected="isContextLimitSelected">100 lines</option>
+                    <option value="50" :selected="isContextLimitSelected">50 lines</option>
+                    <option value="10" :selected="isContextLimitSelected">10 lines</option>
+                    <option value="0" :selected="isContextLimitSelected">No context</option>
+                </select>
             </div>
         </div>
+    </article>
 
-        <!-- Results -->
-        <article x-show="showResults" class="results">
-            <div class="results-content">
-                <div class="results-header">
-                    <h4>Results</h4>
-                    <div class="total-lines">
-                        Total lines: <strong x-text="resultLineCount"></strong>
-                    </div>
-                </div>
-                <div id="result" x-bind:style="getWrapStyle"></div>
+    <!-- Actions -->
+    <div class="actions-grid">
+        <div>
+            <div class="button-group">
+                <button class="primary" @click="renderResult"
+                        x-bind:aria-busy="showProcessingButton"
+                        x-bind:disabled="isSearchDisabled">
+                    Search
+                </button>
+                <button class="secondary"
+                        @click="stopProcessing"
+                        x-show="showProcessingButton">
+                    Stop
+                </button>
+                <button class="secondary outline" @click="reset">Reset</button>
             </div>
-        </article>
-    </main>
+        </div>
+        <div x-show="showResultActions" class="actions-right">
+            <div class="button-group">
+                <button class="secondary outline" @click="copyToInput">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                         viewBox="0 0 16 16">
+                        <path d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z"/>
+                        <path d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zm-3-1A1.5 1.5 0 0 0 5 1.5v1A1.5 1.5 0 0 0 6.5 4h3A1.5 1.5 0 0 0 11 2.5v-1A1.5 1.5 0 0 0 9.5 0h-3z"/>
+                    </svg>
+                    Copy to Input
+                </button>
+                <button class="secondary outline" @click="saveResult">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                         viewBox="0 0 16 16">
+                        <path d="M8.5 1.5A1.5 1.5 0 0 1 10 0h4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2h6c-.314.418-.5.937-.5 1.5v6h-2a.5.5 0 0 0-.354.854l2.5 2.5a.5.5 0 0 0 .708 0l2.5-2.5A.5.5 0 0 0 10.5 7.5h-2v-6z"/>
+                    </svg>
+                    Save
+                </button>
+                <button class="secondary outline" @click="sortResult" value="asc">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                         viewBox="0 0 16 16">
+                        <path d="M3.5 3.5a.5.5 0 0 0-1 0v8.793l-1.146-1.147a.5.5 0 0 0-.708.708l2 1.999.007.007a.497.497 0 0 0 .7-.006l2-2a.5.5 0 0 0-.707-.708L3.5 12.293V3.5zm4 .5a.5.5 0 0 1 0-1h1a.5.5 0 0 1 0 1h-1zm0 3a.5.5 0 0 1 0-1h3a.5.5 0 0 1 0 1h-3zm0 3a.5.5 0 0 1 0-1h5a.5.5 0 0 1 0 1h-5zM7 12.5a.5.5 0 0 0 .5.5h7a.5.5 0 0 0 0-1h-7a.5.5 0 0 0-.5.5z"/>
+                    </svg>
+                    Sort A-Z
+                </button>
+                <button class="secondary outline" @click="sortResult" value="desc">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                         viewBox="0 0 16 16">
+                        <path d="M3.5 12.5a.5.5 0 0 1-1 0V3.707L1.354 4.854a.5.5 0 1 1-.708-.708l2-1.999.007-.007a.498.498 0 0 1 .7.006l2 2a.5.5 0 1 1-.707.708L3.5 3.707V12.5zm3.5-9a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1h-7a.5.5 0 0 1-.5-.5zM7.5 6a.5.5 0 0 0 0 1h5a.5.5 0 0 0 0-1h-5zm0 3a.5.5 0 0 0 0 1h3a.5.5 0 0 0 0-1h-3zm0 3a.5.5 0 0 0 0 1h1a.5.5 0 0 0 0-1h-1z"/>
+                    </svg>
+                    Sort Z-A
+                </button>
+                <button class="secondary outline" @click="toggleWrap">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                         viewBox="0 0 16 16">
+                        <path d="M2.5 1A1.5 1.5 0 0 0 1 2.5v11A1.5 1.5 0 0 0 2.5 15h6.086a1.5 1.5 0 0 0 1.06-.44l4.915-4.914A1.5 1.5 0 0 0 15 8.586V2.5A1.5 1.5 0 0 0 13.5 1h-11zM2 2.5a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 .5.5V8H9.5A1.5 1.5 0 0 0 8 9.5V14H2.5a.5.5 0 0 1-.5-.5v-11zm7 11.293V9.5a.5.5 0 0 1 .5-.5h4.293L9 13.793z"/>
+                    </svg>
+                    <span x-text="getWrapButtonText"></span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Results -->
+    <article x-show="showResults" class="results">
+        <div class="results-content">
+            <div class="results-header">
+                <h4>Results</h4>
+                <div class="total-lines">
+                    Total lines: <strong x-text="resultLineCount"></strong>
+                </div>
+            </div>
+            <div id="result" x-bind:style="getWrapStyle"></div>
+        </div>
+    </article>
+</main>
 </body>
 </html>
