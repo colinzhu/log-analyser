@@ -15,24 +15,24 @@
 
 <body x-data="appData">
 <div class="container-fluid">
-    <h1 style="margin-bottom:0">Log Analyser</h1>
-    <small style="color: #666;margin-left: 2px;">Files are processed locally, no data is sent to the server.</small>
+    <h1 class="no-margin-bottom">Log Analyser</h1>
+    <small class="text-muted margin-left-sm">Files are processed locally, no data is sent to the server.</small>
 </div>
 
 <main class="container-fluid">
     <!-- Input Method Selection -->
 
     <div>
-        <article style="padding-bottom:0;padding-top:5px">
+        <article class="padding-top-bottom">
             <header>
-                <label style="margin-bottom:0">
+                <label class="no-margin-bottom">
                     <input type="radio" name="inputMethod" value="file"
                            :checked="isInputMethodChecked"
                            @change="setInputMethod"/>
                     File
                 </label>
             </header>
-            <div x-transition x-show="isFileInputEnabled" style="padding-bottom: 0.25em">
+            <div x-transition x-show="isFileInputEnabled" class="padding-sm">
                 <input type="file" id="fileInput" @change="onFileChanged" multiple
                        accept=".txt,.log,.gz,.zip" x-bind:disabled="isFileInputDisabled"/>
                 <div x-show="showSelectedFiles" class="selected-files">
@@ -49,16 +49,16 @@
     </div>
 
     <div>
-        <article style="padding-bottom:0;padding-top:5px">
+        <article class="padding-top-bottom">
             <header>
-                <label style="margin-bottom:0">
+                <label class="no-margin-bottom">
                     <input type="radio" name="inputMethod" value="text"
                            :checked="isInputMethodChecked"
                            @change="setInputMethod"/>
                     Text
                 </label>
             </header>
-            <div x-transition x-show="isTextInputEnabled" style="padding-bottom: 0.25em">
+            <div x-transition x-show="isTextInputEnabled" class="padding-sm">
                         <textarea id="textInput" rows="2"
                                   placeholder="Paste your text/log here..."
                                   :value="textInput"
@@ -69,17 +69,16 @@
 
 
     <div x-show="isChromeExtension">
-        <article style="padding-bottom:0;padding-top:5px">
+        <article class="padding-top-bottom">
             <header>
-                <label style="margin-bottom:0">
+                <label class="no-margin-bottom">
                     <input type="radio" name="inputMethod" value="url"
                            :checked="isInputMethodChecked"
                            @change="setInputMethod"/>
-                    URL <span
-                        style="color: #888;font-size: 0.8em;">(supports multiple URLs of text, .gz, .zip files)</span>
+                    URL <span class="text-muted text-small">(supports multiple URLs of text, .gz, .zip files)</span>
                 </label>
             </header>
-            <div x-transition x-show="isUrlInputEnabled" style="padding-bottom: 0.25em">
+            <div x-transition x-show="isUrlInputEnabled" class="padding-sm">
                     <textarea id="urlInput" rows="2"
                               placeholder="Enter log file URLs (one per line)..."
                               :value="urlInput"
@@ -93,7 +92,7 @@
     <!-- Filter Options -->
     <article>
         <header>
-            <span style="margin-bottom:0">Filter Options</span>
+            <span class="no-margin-bottom">Filter Options</span>
         </header>
         <div class="grid">
             <div>

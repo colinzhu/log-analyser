@@ -103,6 +103,7 @@
 /* 匹配行和上下文行样式 */
 .matched-line {
     padding: 0 0.5rem !important;
+    cursor: pointer;
 }
 
 .matched-line:hover {
@@ -117,10 +118,42 @@
     padding: 0 0.5rem !important;
     color: #888;
     background-color: #fff8e1;
+    font-style: italic;
 }
 
 .results-content #result .context-line:hover {
     background-color: #ffc !important;
+}
+
+.error {
+    color: red;
+    font-weight: bold;
+}
+
+/* Common styles for reuse */
+.no-margin-bottom {
+    margin-bottom: 0;
+}
+
+.padding-sm {
+    padding-bottom: 0.25em;
+}
+
+.padding-top-bottom {
+    padding-bottom: 0;
+    padding-top: 5px;
+}
+
+.text-muted {
+    color: #666;
+}
+
+.text-small {
+    font-size: 0.8em;
+}
+
+.margin-left-sm {
+    margin-left: 2px;
 }
 
 #urlInput {

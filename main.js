@@ -141,25 +141,35 @@ document.addEventListener('alpine:init', () => {
         getWrapButtonText() {
             return this.isWrap ? 'Nowrap' : 'Wrap';
         },
-
+        
+        // Simplified input method checks
+        isInputDisabled(method) {
+            return this.inputMethod !== method;
+        },
+        
+        isInputEnabled(method) {
+            return this.inputMethod === method;
+        },
+        
+        // These computed properties use the simplified methods above
         isFileInputDisabled() {
-            return this.inputMethod !== 'file';
+            return this.isInputDisabled('file');
         },
         isTextInputDisabled() {
-            return this.inputMethod !== 'text';
+            return this.isInputDisabled('text');
         },
         isUrlInputDisabled() {
-            return this.inputMethod !== 'url';
+            return this.isInputDisabled('url');
         },
         
         isFileInputEnabled() {
-            return this.inputMethod === 'file';
+            return this.isInputEnabled('file');
         },
         isUrlInputEnabled() {
-            return this.inputMethod === 'url';
+            return this.isInputEnabled('url');
         },
         isTextInputEnabled() {
-            return this.inputMethod === 'text';
+            return this.isInputEnabled('text');
         },
 
         getTextInputSectionCss() {
@@ -169,11 +179,17 @@ document.addEventListener('alpine:init', () => {
         isInputMethodChecked() {
             return this.inputMethod === this.$el.value;
         },
+        
+        // Simplified selection checks
+        isValueSelected(currentValue, elementValue) {
+            return currentValue === parseInt(elementValue);
+        },
+        
         isOutputLimitSelected() {
-            return this.outputLimit === parseInt(this.$el.value);
+            return this.isValueSelected(this.outputLimit, this.$el.value);
         },
         isContextLimitSelected() {
-            return this.contextLimit === parseInt(this.$el.value);
+            return this.isValueSelected(this.contextLimit, this.$el.value);
         },
 
         // Methods
@@ -353,13 +369,20 @@ document.addEventListener('alpine:init', () => {
         renderFromTextInput() {
             const { includeRegexes, excludeRegexes, hideRegexes } = this.buildRegexes();
             const lines = this.textInput.split("\n");
-
-            // 使用与文件处理相同的逻辑
+            
+            // Process the text input using the same method as for file chunks
+            this.processTextLines(lines, includeRegexes, excludeRegexes, hideRegexes, null);
+            this.isProcessing = false;
+        },
+        
+        // Unified method to process text lines from any source
+        processTextLines(lines, includeRegexes, excludeRegexes, hideRegexes, fileName) {
+            // If context is needed, find and process matched lines with context
             if (this.contextLimit > 0) {
-                // 先找到所有匹配的行
+                // First find all matching lines
                 const matchedIndexes = [];
                 lines.forEach((line, index) => {
-                    if (this.resultLineCount >= this.outputLimit) return;
+                    if (this.shouldStop || this.resultLineCount >= this.outputLimit) return;
                     
                     const include = includeRegexes.every(regex => regex.test(line));
                     const exclude = excludeRegexes.every(regex => !regex.test(line));
@@ -369,9 +392,9 @@ document.addEventListener('alpine:init', () => {
                     }
                 });
 
-                // 处理每个匹配的行及其上下文
+                // Process each matched line and its context
                 for (const index of matchedIndexes) {
-                    if (this.resultLineCount >= this.outputLimit) break;
+                    if (this.shouldStop || this.resultLineCount >= this.outputLimit) break;
 
                     const line = lines[index];
                     let processedLine = line;
@@ -379,16 +402,16 @@ document.addEventListener('alpine:init', () => {
                         processedLine = processedLine.replace(regex, "");
                     });
 
-                    // 存储上下文到 IndexedDB
+                    // Store context in IndexedDB
                     const contextStart = Math.max(0, index - this.contextLimit);
                     const contextEnd = Math.min(lines.length - 1, index + this.contextLimit);
                     
-                    // 创建带有相对位置的上下文行数组
+                    // Create context lines array with relative positions
                     const contextLines = [];
                     for (let i = contextStart; i <= contextEnd; i++) {
                         contextLines.push({
                             text: lines[i],
-                            relativePosition: i - index  // 相对于匹配行的位置
+                            relativePosition: i - index  // Relative to matched line
                         });
                     }
 
@@ -398,16 +421,21 @@ document.addEventListener('alpine:init', () => {
 
                     store.add({
                         id: lineId,
-                        fileName: null,
+                        fileName: fileName,
                         contextLines: contextLines,
                         matchedLine: line
                     });
 
-                    // 写入匹配的行
+                    // Write the matched line
                     const resultDiv = document.getElementById('result');
                     const lineDiv = document.createElement('div');
                     lineDiv.textContent = processedLine;
                     lineDiv.className = 'matched-line';
+                    
+                    if (fileName) {
+                        lineDiv.title = `From: ${fileName}`;
+                    }
+
                     lineDiv.dataset.lineId = lineId;
                     lineDiv.ondblclick = () => this.showContext(lineId);
 
@@ -415,13 +443,12 @@ document.addEventListener('alpine:init', () => {
                     this.resultLineCount++;
                 }
             } else {
-                // 如果不需要上下文，使用原来的逻辑
-                for (let line of lines) {
-                    if (this.resultLineCount >= this.outputLimit) break;
-                    this.processLine(line, includeRegexes, excludeRegexes, hideRegexes);
-                }
+                // If no context needed, process each line directly
+                lines.forEach(line => {
+                    if (this.shouldStop || this.resultLineCount >= this.outputLimit) return;
+                    this.processLine(line, includeRegexes, excludeRegexes, hideRegexes, fileName);
+                });
             }
-            this.isProcessing = false;
         },
 
         buildRegexes() {
@@ -604,78 +631,8 @@ document.addEventListener('alpine:init', () => {
             const { includeRegexes, excludeRegexes, hideRegexes } = this.buildRegexes();
             const lines = chunk.split("\n");
             
-            // 如果需要上下文，存储所有行
-            if (this.contextLimit > 0) {
-                // 先找到所有匹配的行
-                const matchedIndexes = [];
-                lines.forEach((line, index) => {
-                    if (this.shouldStop || this.resultLineCount >= this.outputLimit) return;
-                    
-                    const include = includeRegexes.every(regex => regex.test(line));
-                    const exclude = excludeRegexes.every(regex => !regex.test(line));
-                    
-                    if (include && exclude) {
-                        matchedIndexes.push(index);
-                    }
-                });
-
-                // 处理每个匹配的行及其上下文
-                for (const index of matchedIndexes) {
-                    if (this.shouldStop || this.resultLineCount >= this.outputLimit) break;
-
-                    const line = lines[index];
-                    let processedLine = line;
-                    hideRegexes.forEach(regex => {
-                        processedLine = processedLine.replace(regex, "");
-                    });
-
-                    // 存储上下文到 IndexedDB
-                    const contextStart = Math.max(0, index - this.contextLimit);
-                    const contextEnd = Math.min(lines.length - 1, index + this.contextLimit);
-                    
-                    // 创建带有相对位置的上下文行数组
-                    const contextLines = [];
-                    for (let i = contextStart; i <= contextEnd; i++) {
-                        contextLines.push({
-                            text: lines[i],
-                            relativePosition: i - index  // 相对于匹配行的位置
-                        });
-                    }
-
-                    const lineId = this.resultLineCount + 1;
-                    const transaction = db.transaction(['contextLines'], 'readwrite');
-                    const store = transaction.objectStore('contextLines');
-
-                    store.add({
-                        id: lineId,
-                        fileName: fileName,
-                        contextLines: contextLines,
-                        matchedLine: line
-                    });
-
-                    // 写入匹配的行
-                    const resultDiv = document.getElementById('result');
-                    const lineDiv = document.createElement('div');
-                    lineDiv.textContent = processedLine;
-                    lineDiv.className = 'matched-line';
-                    
-                    if (fileName) {
-                        lineDiv.title = `From: ${fileName}`;
-                    }
-
-                    lineDiv.dataset.lineId = lineId;
-                    lineDiv.ondblclick = () => this.showContext(lineId);
-
-                    resultDiv.appendChild(lineDiv);
-                    this.resultLineCount++;
-                }
-            } else {
-                // 如果不需要上下文，直接处理每一行
-                lines.forEach(line => {
-                    if (this.shouldStop || this.resultLineCount >= this.outputLimit) return;
-                    this.processLine(line, includeRegexes, excludeRegexes, hideRegexes, fileName);
-                });
-            }
+            // Use the unified method to process text lines
+            this.processTextLines(lines, includeRegexes, excludeRegexes, hideRegexes, fileName);
         },
 
         writeLine(line, fileName) {
@@ -688,7 +645,7 @@ document.addEventListener('alpine:init', () => {
                 lineDiv.title = `From: ${fileName}`;
             }
 
-            // 只有在需要上下文时才添加双击事件
+            // Only add double-click event when context is needed
             if (this.contextLimit > 0) {
                 const lineId = this.resultLineCount + 1;
                 lineDiv.dataset.lineId = lineId;
